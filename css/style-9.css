@@ -56,6 +56,14 @@
 	src: url("../fonts/phy.woff2") format("woff2");
 }
 @font-face {
+	font-family: phypt;
+	src: url("../fonts/phypt.ttf") format("truetype");
+}
+@font-face {
+	font-family: phy;
+	src: url("../fonts/truephyrexian.ttf") format("truetype");
+}
+@font-face {
 	font-family: Montserrat-SemiBold;
 	src: url("../fonts/Montserrat-SemiBold.ttf") format('truetype');
 }
