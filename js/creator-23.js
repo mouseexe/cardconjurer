@@ -5059,8 +5059,10 @@ async function bulkDownloadZip() {
     localStorage.setItem(tempKey, JSON.stringify(cardToSave));
 
     // 4. Loop through each saved card to render and add it to the zip object.
-    for (const key of cardKeys) {
+    for (const [index, key] of cardKeys.entries()) {
         try {
+			notify(`Processing card ${index + 1} of ${cardKeys.length}: ${key}`, 1);
+
             ImageLoadTracker.start();
             FontLoadTracker.start();
             await loadCard(key);
