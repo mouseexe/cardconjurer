@@ -218,6 +218,9 @@ function getCardName() {
 	if (card.text.nickname) {
 		imageName += ' (' + card.text.nickname.text + ')';
 	}
+	if (card.infoLanguage.length > 2) {
+		imageName = card.infoNumber + ' ' + imageName
+	}
 	return imageName.replace(/\{[^}]+\}/g, '');
 }
 function getInlineCardName() {
