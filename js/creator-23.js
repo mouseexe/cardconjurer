@@ -5219,6 +5219,125 @@ function downloadCard(alt = false, jpeg = false) {
 		}
 	}
 }
+async function bulkDownloadZip() {
+    // 1. Initial checks for libraries and saved cards.
+    if (typeof JSZip === 'undefined') {
+        notify('Required library (JSZip) has not loaded yet. Please wait a moment and try again.', 5);
+        return;
+    }
+    const cardKeys = JSON.parse(localStorage.getItem('cardKeys'));
+    if (!cardKeys || cardKeys.length === 0) {
+        notify('No saved cards found to download.', 3);
+        return;
+    }
+
+    let fileHandle = null;
+    let useStreaming = false;
+
+    // 2. Trigger the file picker immediately to capture the user gesture.
+    if (window.showSaveFilePicker) {
+        try {
+            notify('Please choose a location to save your ZIP file.', 15);
+            fileHandle = await window.showSaveFilePicker({
+                suggestedName: 'CardConjurer_Bulk.zip',
+                types: [{
+                    description: 'ZIP file',
+                    accept: { 'application/zip': ['.zip'] },
+                }],
+            });
+            useStreaming = true;
+        } catch (err) {
+            // This error occurs if the user clicks "Cancel" in the save dialog.
+            if (err.name === 'AbortError') {
+                notify('Save operation cancelled.', 3);
+                return; // Exit the function entirely if the user cancels.
+            }
+            // If another error occurs, fall back to the in-memory method.
+            console.error("Could not get file handle, falling back to in-memory method:", err);
+        }
+    }
+
+    // 3. Save the current state and prepare the zip object.
+    notify(`Preparing to process ${cardKeys.length} cards...`, 10);
+    const zip = new JSZip();
+    const tempKey = '__temp_current_card_state__';
+    const cardToSave = JSON.parse(JSON.stringify(card));
+    cardToSave.frames.forEach(frame => {
+        delete frame.image;
+        frame.masks.forEach(mask => delete mask.image);
+    });
+    localStorage.setItem(tempKey, JSON.stringify(cardToSave));
+
+    // 4. Loop through each saved card to render and add it to the zip object.
+    for (const key of cardKeys) {
+        try {
+            ImageLoadTracker.start();
+            FontLoadTracker.start();
+            await loadCard(key);
+            drawText();
+            
+            const imagePromise = ImageLoadTracker.waitForAll();
+            const fontPromise = FontLoadTracker.waitForAll();
+            await Promise.all([imagePromise, fontPromise]);
+            
+            await new Promise(resolve => setTimeout(resolve, 50));
+            drawCard();
+            
+            const imageName = getCardName() + '.png';
+            const imageData = cardCanvas.toDataURL('image/png').split(',')[1];
+            
+            zip.file(imageName, imageData, { base64: true });
+            console.log(`Zipped: ${imageName}`);
+
+        } catch (error) {
+            console.error(`Failed to process and zip card "${key}":`, error);
+            notify(`Skipping card "${key}" due to an error.`, 3);
+        } finally {
+            ImageLoadTracker.stop();
+            FontLoadTracker.stop();
+        }
+    }
+
+    // 5. Generate and save the ZIP file using the appropriate method.
+    try {
+        if (useStreaming && fileHandle) {
+            // Ideal Path: Manually pump the JSZip stream to the WritableStream.
+            notify('Saving ZIP file to disk...', 10);
+            const writable = await fileHandle.createWritable();
+
+            await new Promise((resolve, reject) => {
+                const stream = zip.generateInternalStream({ type: 'uint8array', streamFiles: true });
+                
+                stream
+                    .on('data', (chunk) => { writable.write(chunk).catch(reject); })
+                    .on('end', () => { writable.close().then(resolve).catch(reject); })
+                    .on('error', (err) => { reject(err); })
+                    .resume();
+            });
+            notify('ZIP file saved successfully!', 5);
+
+        } else {
+            // Fallback Path: For browsers without streaming support.
+            notify('Streaming not supported. Building ZIP in memory... This may be slow or fail.', 10);
+            const content = await zip.generateAsync({ type: 'blob' });
+            
+            const downloadElement = document.createElement('a');
+            downloadElement.href = URL.createObjectURL(content);
+            downloadElement.download = 'CardConjurer_Bulk.zip';
+            document.body.appendChild(downloadElement);
+            downloadElement.click();
+            document.body.removeChild(downloadElement);
+        }
+    } catch (err) {
+        console.error('Failed to generate or save ZIP file:', err);
+        notify('An error occurred while saving the ZIP file.', 5);
+    }
+    
+    // 6. Restore the user's original card state.
+    await loadCard(tempKey);
+    localStorage.removeItem(tempKey);
+    console.log('Bulk download process finished. User state restored.');
+}
 //IMPORT/SAVE TAB
 function importCard(cardObject) {
 	scryfallCard = cardObject;
@@ -5760,97 +5879,6 @@ function uploadSavedCards(event) {
 		JSON.parse(reader.result).forEach(item => saveCard(item));
 	}
 	reader.readAsText(event.target.files[0]);
-}
-async function bulkDownloadZip() {
-    // 1. Check if the JSZip library is available.
-    if (typeof JSZip === 'undefined') {
-        notify('Required library (JSZip) has not loaded yet. Please wait a moment and try again.', 5);
-        return;
-    }
-
-    const cardKeys = JSON.parse(localStorage.getItem('cardKeys'));
-    if (!cardKeys || cardKeys.length === 0) {
-        notify('No saved cards found to download.', 3);
-        return;
-    }
-
-    notify(`Starting bulk download for ${cardKeys.length} cards. The interface will update for each card. Please wait...`, 10);
-    const zip = new JSZip();
-    
-    // 2. Save the current unsaved card state.
-    const tempKey = '__temp_current_card_state__';
-    const cardToSave = JSON.parse(JSON.stringify(card));
-    cardToSave.frames.forEach(frame => {
-        delete frame.image;
-        frame.masks.forEach(mask => delete mask.image);
-    });
-    localStorage.setItem(tempKey, JSON.stringify(cardToSave));
-
-    // 3. Loop through each saved card.
-    for (const key of cardKeys) {
-        try {
-            // Start tracking sessions for both images and fonts.
-            ImageLoadTracker.start();
-            FontLoadTracker.start();
-
-            // loadCard() populates the global 'card' object with text, frame sources, etc.
-            await loadCard(key);
-
-            // Now that card data is loaded, do a "dry run" of drawText.
-            // This doesn't draw the final card, but it populates our FontLoadTracker
-            // by calling the .track() method we added inside writeText().
-            drawText();
-            
-            // Create promises that will wait for all assets to be ready.
-            const imagePromise = ImageLoadTracker.waitForAll();
-            const fontPromise = FontLoadTracker.waitForAll();
-
-            // Wait for BOTH images AND fonts to finish loading.
-            await Promise.all([imagePromise, fontPromise]);
-            
-            // All assets are now loaded. We'll do one final, definitive draw of the entire card.
-            // A brief timeout helps ensure the browser has processed the final asset loads.
-            await new Promise(resolve => setTimeout(resolve, 50));
-            drawCard();
-            
-            // Capture the canvas, which now has correctly rendered images and text.
-            const imageName = getCardName() + '.png';
-            const imageData = cardCanvas.toDataURL('image/png').split(',')[1];
-            
-            zip.file(imageName, imageData, { base64: true });
-            console.log(`Zipped: ${imageName}`);
-
-        } catch (error) {
-            console.error(`Failed to process and zip card "${key}":`, error);
-            notify(`Skipping card "${key}" due to an error.`, 3);
-        } finally {
-            // Stop tracking sessions before the next card.
-            ImageLoadTracker.stop();
-            FontLoadTracker.stop();
-        }
-    }
-
-    // 4. Generate the complete ZIP file and trigger the download.
-    notify('Generating ZIP file... This may take a moment.', 10);
-    try {
-        const content = await zip.generateAsync({ type: 'blob' });
-        
-        const downloadElement = document.createElement('a');
-        downloadElement.href = URL.createObjectURL(content);
-        downloadElement.download = 'CardConjurer_Bulk.zip';
-        document.body.appendChild(downloadElement);
-        downloadElement.click();
-        document.body.removeChild(downloadElement);
-        notify('ZIP file download initiated.', 5);
-    } catch (err) {
-        console.error('Failed to generate ZIP file:', err);
-        notify('An error occurred while generating the ZIP file.', 5);
-    }
-
-    // 5. Restore the user's original card state.
-    await loadCard(tempKey);
-    localStorage.removeItem(tempKey);
-    console.log('Bulk download process finished. User state restored.');
 }
 //TUTORIAL TAB
 function loadTutorialVideo() {
