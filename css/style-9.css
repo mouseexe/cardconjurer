@@ -199,6 +199,10 @@
 	font-family: plantinmtprosemiboldit;
 	src: url('../fonts/PlantinMTProSemiBdIt.woff2') format("woff2");
 }
+@font-face {
+	font-family: comicsans;
+	src: url('../fonts/Comic Sans MS.ttf') format("truetype");
+}
 /*Variables*/
 :root {
 	--site-background: url('../img/lowpolyBackground.svg');
