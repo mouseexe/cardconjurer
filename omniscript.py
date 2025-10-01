@@ -229,7 +229,7 @@ if __name__ == '__main__':
     # Define the main project path.
     # Use a raw string (r"...") on Windows to handle backslashes correctly.
     # There should already be a folder called Print inside of the filepath listed here
-    project = r'C:\Users\kayss\Pictures\Magic\Commander\Test'
+    project = r'C:\Users\kayss\Pictures\Magic\Commander\Grandpa Got Lost Again'
 
     # --- Optional Parameters ---
     GRID_ROWS = 4
