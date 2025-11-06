@@ -3,44 +3,35 @@ import math
 import shutil
 import time
 from PIL import Image
+import json
+from datetime import date
+import unicodedata
+import re
+import zipfile
 
-
-# --- Main Pipeline Orchestrator ---
 
 def run_image_pipeline(project_path: str, grid_rows: int = 4, grid_cols: int = 4, bg_color: str = 'black', spacing: int = 0, downscale_factor: int = 3):
-    """
-    Runs a complete image processing pipeline, including timing the execution.
-    1. Crops and downsizes images from <project_path>/Print to <project_path>/Share.
-    2. Creates grid images using the processed images from <project_path>/Share.
-    3. Renames the images from <project_path>/Share and saves them to <project_path>/Forge.
-
-    Args:
-        project_path (str): The full path to the main project folder.
-        grid_rows (int, optional): Number of rows for the image grid. Defaults to 4.
-        grid_cols (int, optional): Number of columns for the image grid. Defaults to 4.
-        bg_color (str, optional): Background color for the grid ('white' or 'black'). Defaults to 'black'.
-        spacing (int, optional): Pixel spacing between images in the grid. Defaults to 0.
-        downscale_factor (int, optional): The factor by which to downscale images. Defaults to 3.
-    """
-    # --- Start Timer ---
     start_time = time.monotonic()
     print("=== STARTING IMAGE PIPELINE ===\n")
 
-    # Define standardized folder paths
     print_folder = os.path.join(project_path, 'Print')
     share_folder = os.path.join(project_path, 'Share')
     forge_folder = os.path.join(project_path, 'Forge')
 
-    # --- Step 1: Crop and Downsize images for the 'Share' folder ---
+    source_folders = [print_folder]
+    backsides_folder = os.path.join(print_folder, 'Backsides')
+    if os.path.isdir(backsides_folder):
+        print(f"Found 'Backsides' folder at: {backsides_folder}")
+        source_folders.append(backsides_folder)
+
     print("--- Starting Step 1: Cropping and Downsizing to 'Share' folder ---")
     crop_and_downsize_for_share(
-        input_folder=print_folder,
+        input_folders=source_folders,
         output_folder=share_folder,
         downscale_factor=downscale_factor
     )
     print("--- Step 1 Finished ---\n")
 
-    # --- Step 2: Create Image Grids from the 'Share' folder ---
     print("--- Starting Step 2: Creating Image Grids ---")
     run_grid_maker(
         folder_path=share_folder,
@@ -52,88 +43,158 @@ def run_image_pipeline(project_path: str, grid_rows: int = 4, grid_cols: int = 4
     )
     print("--- Step 2 Finished ---\n")
 
-    # --- Step 3: Rename files from 'Share' for the 'Forge' folder ---
     print("--- Starting Step 3: Renaming files for 'Forge' folder ---")
     rename_for_forge(
         source_folder=share_folder,
         destination_folder=forge_folder
     )
-    print("--- Step 3 Finished ---")
+    print("--- Step 3 Finished ---\n")
 
-    # --- End Timer and Print Duration ---
+    print("--- Starting Step 4: Creating metadata .txt file ---")
+    create_metadata_file(project_path=project_path)
+    print("--- Step 4 Finished ---")
+
     end_time = time.monotonic()
     duration = end_time - start_time
     print("\n=== PIPELINE FINISHED ===")
     print(f"Total execution time: {duration:.2f} seconds.")
 
 
-# --- Child Functions ---
+def create_metadata_file(project_path: str):
+    try:
+        conjurer_filename = next(f for f in os.listdir(project_path) if f.lower().endswith('.cardconjurer'))
+        conjurer_path = os.path.join(project_path, conjurer_filename)
+    except StopIteration:
+        print("Error: No .cardconjurer file found. Skipping metadata file creation.")
+        return
 
-def crop_and_downsize_for_share(input_folder: str, output_folder: str, downscale_factor: int):
-    """
-    Crops bleed based on a ratio, downsizes the image, and saves it to the output folder.
-    Handles images of different resolutions, provided they have the correct aspect ratio.
-    """
-    if not os.path.isdir(input_folder):
-        print(f"Error: Input folder for cropping not found at '{input_folder}'. Skipping step.")
+    try:
+        with open(conjurer_path, 'r', encoding='utf-8') as f:
+            json_data = json.load(f)
+    except json.JSONDecodeError:
+        print(f"Error: Could not parse '{conjurer_path}'. It may be malformed.")
+        return
+    except Exception as e:
+        print(f"Error: Could not read the .cardconjurer file. {e}")
+        return
+
+    card_data_map = {
+        card['key'].replace("’", "'"): card['data']
+        for card in json_data
+    }
+
+    print_folder = os.path.join(project_path, 'Print')
+    if not os.path.isdir(print_folder):
+        print(f"Error: 'Print' folder not found. Skipping metadata file creation.")
+        return
+
+    image_filenames = [
+        f for f in os.listdir(print_folder)
+        if os.path.isfile(os.path.join(print_folder, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg'))
+    ]
+
+    processed_cards = []
+    for filename in image_filenames:
+        base_name = os.path.splitext(filename)[0]
+        normalized_name = base_name.replace("’", "'")
+
+        if normalized_name in card_data_map:
+            rarity = card_data_map[normalized_name].get('infoRarity', 'C')
+            processed_cards.append({'name': base_name, 'rarity': rarity})
+        else:
+            print(f"Warning: No data found for '{base_name}' in .cardconjurer file. Skipping.")
+
+    if not processed_cards:
+        print("No matching cards found to create metadata file.")
+        return
+
+    sorted_cards = sorted(processed_cards, key=lambda x: x['name'])
+
+    set_code = os.path.splitext(conjurer_filename)[0]
+    project_name = os.path.basename(project_path)
+    today_str = date.today().strftime('%Y-%m-%d')
+    output_lines = [
+        "[metadata]",
+        f"Code={set_code}",
+        f"Date={today_str}",
+        f"Name={project_name}",
+        "Type=Other",
+        "",
+        "[cards]"
+    ]
+
+    total_cards = len(sorted_cards)
+    pad_width = len(str(total_cards)) + 1
+
+    for i, card in enumerate(sorted_cards, 1):
+        number = str(i).zfill(pad_width)
+        line = f"{number} {card['rarity']} {card['name']}".replace('’', '\'').replace('%', '//')
+        output_lines.append(line)
+
+    output_filename = f"{project_name}.txt"
+    output_path = os.path.join(project_path, output_filename)
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(output_lines))
+        print(f"✅ Success! Metadata file saved to: {output_path}")
+    except Exception as e:
+        print(f"Error: Could not write the metadata file. {e}")
+
+
+def crop_and_downsize_for_share(input_folders: list, output_folder: str, downscale_factor: int):
+    if not os.path.isdir(input_folders[0]):
+        print(f"Error: Main input folder for cropping not found at '{input_folders[0]}'. Skipping step.")
         return
 
     os.makedirs(output_folder, exist_ok=True)
 
-    # Ratios derived from the original bleed crop (2010x2814 from 2187x2975).
-    # This defines the percentage of the original image to keep after cropping.
     CROP_WIDTH_RATIO = 2010 / 2187
     CROP_HEIGHT_RATIO = 2814 / 2975
 
-    # Expected aspect ratio for validation, with a small tolerance.
-    # Using the 2187x2975 dimensions as the reference.
     EXPECTED_ASPECT_RATIO = 2187 / 2975
 
-    print(f"Scanning for images in: {input_folder}")
-    for filename in os.listdir(input_folder):
-        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
-            input_path = os.path.join(input_folder, filename)
-            output_path = os.path.join(output_folder, filename)
-            try:
-                with Image.open(input_path) as img:
-                    img_width, img_height = img.size
+    for input_folder in input_folders:
+        if not os.path.isdir(input_folder):
+            print(f"Warning: Could not find source folder '{input_folder}'. Skipping.")
+            continue
 
-                    # Validate aspect ratio instead of exact size.
-                    # We use math.isclose to account for small floating point variations.
-                    current_aspect_ratio = img_width / img_height
-                    if not math.isclose(current_aspect_ratio, EXPECTED_ASPECT_RATIO, rel_tol=1e-3):
-                        print(
-                            f"Skipping '{filename}': incorrect aspect ratio {current_aspect_ratio:.4f}. Expected ~{EXPECTED_ASPECT_RATIO:.4f}.")
-                        continue
+        print(f"Scanning for images in: {input_folder}")
+        for filename in os.listdir(input_folder):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
+                input_path = os.path.join(input_folder, filename)
+                output_path = os.path.join(output_folder, filename)
+                try:
+                    with Image.open(input_path) as img:
+                        img_width, img_height = img.size
 
-                    # 1. Calculate the crop box dynamically for the current image
-                    target_width = int(img_width * CROP_WIDTH_RATIO)
-                    target_height = int(img_height * CROP_HEIGHT_RATIO)
+                        current_aspect_ratio = img_width / img_height
+                        if not math.isclose(current_aspect_ratio, EXPECTED_ASPECT_RATIO, rel_tol=1e-3):
+                            print(
+                                f"Skipping '{filename}': incorrect aspect ratio {current_aspect_ratio:.4f}. Expected ~{EXPECTED_ASPECT_RATIO:.4f}.")
+                            continue
 
-                    left = (img_width - target_width) // 2
-                    top = (img_height - target_height) // 2
-                    right = left + target_width
-                    bottom = top + target_height
-                    crop_box = (left, top, right, bottom)
+                        target_width = int(img_width * CROP_WIDTH_RATIO)
+                        target_height = int(img_height * CROP_HEIGHT_RATIO)
 
-                    cropped_img = img.crop(crop_box)
+                        left = (img_width - target_width) // 2
+                        top = (img_height - target_height) // 2
+                        right = left + target_width
+                        bottom = top + target_height
+                        crop_box = (left, top, right, bottom)
 
-                    # 2. Downsize the cropped image
-                    new_width = cropped_img.width // downscale_factor
-                    new_height = cropped_img.height // downscale_factor
-                    resized_img = cropped_img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                        cropped_img = img.crop(crop_box)
 
-                    # 3. Save the final result
-                    resized_img.save(output_path)
-                    print(f"Processed '{filename}' ({img_width}x{img_height}) and saved to '{output_folder}'.")
-            except Exception as e:
-                print(f"Could not process '{filename}'. Error: {e}")
+                        new_width = cropped_img.width // downscale_factor
+                        new_height = cropped_img.height // downscale_factor
+                        resized_img = cropped_img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+                        resized_img.save(output_path)
+                        print(f"Processed '{filename}' ({img_width}x{img_height}) and saved to '{output_folder}'.")
+                except Exception as e:
+                    print(f"Could not process '{filename}'. Error: {e}")
 
 
 def run_grid_maker(folder_path: str, output_path: str, rows: int, cols: int, background_color: str, spacer_pixels: int):
-    """
-    Combines images from a folder into one or more grid images.
-    """
     if not os.path.isdir(folder_path):
         print(f"Error: Source folder for grid maker not found at '{folder_path}'. Skipping step.")
         return
@@ -193,9 +254,6 @@ def run_grid_maker(folder_path: str, output_path: str, rows: int, cols: int, bac
 
 
 def rename_for_forge(source_folder: str, destination_folder: str):
-    """
-    Copies and renames files from a source folder to a destination folder.
-    """
     if not os.path.isdir(source_folder):
         print(f"Error: Source folder for Forge prep not found at '{source_folder}'. Skipping step.")
         return
@@ -204,41 +262,55 @@ def rename_for_forge(source_folder: str, destination_folder: str):
 
     print("Copying and renaming files for Forge...")
     for file_name in os.listdir(source_folder):
-        # We process any image file type that might be in the Share folder
         if file_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-            # Determine the base name by removing the extension
             base_name, extension = os.path.splitext(file_name)
-
-            # Strips leading numbers, spaces, and underscores from the base name
             stripped_name = base_name.lstrip('0123456789_ ')
-
-            # Perform final replacements and add the new extension
-            new_file_name = stripped_name.replace('’', '\'') + '.fullborder.jpg'
-
+            replaced_name = stripped_name.replace('’', '\'').replace(' % ', '')
+            cleaned_name = remove_accents(replaced_name)
+            new_file_name = cleaned_name + '.fullborder.jpg'
             source_path = os.path.join(source_folder, file_name)
             destination_path = os.path.join(destination_folder, new_file_name)
 
             shutil.copy2(source_path, destination_path)
             print(f"Copied '{file_name}' to '{new_file_name}' in {destination_folder}")
 
+    print("\n--- Starting Step 4: Creating Zip Archive ---")
 
-# --- Example Usage ---
+    project_path = os.path.dirname(destination_folder)
+    conjurer_filename = next(f for f in os.listdir(project_path) if f.lower().endswith('.cardconjurer'))
+    set_code = os.path.splitext(conjurer_filename)[0]
+    zip_file_path = os.path.join(project_path, f"{set_code}.zip")
+
+    print(f"Creating zip archive at: {zip_file_path}")
+
+    try:
+        with zipfile.ZipFile(zip_file_path, 'w') as zipf:
+            for file_name in os.listdir(destination_folder):
+                if file_name.endswith('.fullborder.jpg'):
+                    file_path = os.path.join(destination_folder, file_name)
+                    zipf.write(file_path, arcname=file_name)
+
+        print(f"✅ Success! Zip file created with {len(os.listdir(destination_folder))} files.")
+    except Exception as e:
+        print(f"Error: Could not create the zip file. {e}")
+
+    print("--- Step 4 Finished ---")
+
+
+def remove_accents(input_str: str) -> str:
+    nfkd_form = unicodedata.normalize('NFD', input_str)
+    return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
+
+
 if __name__ == '__main__':
+    project = r'C:\Users\kayss\Pictures\Magic\Commander\A New Clue'
 
-    # --- IMPORTANT ---
-    # Define the main project path.
-    # Use a raw string (r"...") on Windows to handle backslashes correctly.
-    # There should already be a folder called Print inside of the filepath listed here
-    project = r'C:\Users\kayss\Pictures\Magic\Commander\Grandpa Got Lost Again'
-
-    # --- Optional Parameters ---
-    GRID_ROWS = 4
-    GRID_COLS = 4
+    GRID_ROWS = 5
+    GRID_COLS = 5
     BACKGROUND_COLOR = 'black'
     SPACING_PIXELS = 0
     DOWNSCALE_FACTOR = 3
 
-    # --- Run the full pipeline ---
     run_image_pipeline(
         project_path=project,
         grid_rows=GRID_ROWS,
