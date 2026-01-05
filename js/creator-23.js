@@ -430,6 +430,7 @@ loadManaSymbols(['wu', 'wb', 'ub', 'ur', 'br', 'bg', 'rg', 'rw', 'gw', 'gu', '2w
 				 'wup', 'wbp', 'ubp', 'urp', 'brp', 'bgp', 'rgp', 'rwp', 'gwp', 'gup', 'purplew', 'purpleu', 'purpleb', 'purpler', 'purpleg',
 				 '2purple', 'purplep', 'cw', 'cu', 'cb', 'cr', 'cg'], [1.2, 1.2]);
 loadManaSymbols(['bar.png', 'whitebar.png']);
+loadManaSymbols(['brush', 'whitebrush'], [2.85, 2.85]);
 loadManaSymbols(['xxbgw', 'xxbrg', 'xxgub', 'xxgwu', 'xxrgw', 'xxrwu', 'xxubr', 'xxurg', 'xxwbr', 'xxwub'], [1.2, 1.2]);
 loadManaSymbols(true, ['chaos'], [1.2, 1]);
 loadManaSymbols(true, ['tk'], [0.8, 1]);
@@ -977,7 +978,7 @@ function autoFrame() {
 		autoExtendedArtFrame(colors, card.text.mana.text, card.text.type.text, card.text.pt.text, true);
 	} else if (frame == '8th') {
 		group = 'Misc-2';
-		auto8thEditionFrame(colors, card.text.mana.text, card.text.type.text, card.text.pt.text, false);
+		auto8thEditionFrame(colors, card.text.mana.text, card.text.type.text, card.text.pt.text);
 	} else if (frame == 'Borderless') {
 		group = 'Showcase-5';
 		autoBorderlessFrame(colors, card.text.mana.text, card.text.type.text, card.text.pt.text);
@@ -1514,7 +1515,7 @@ async function autoBorderlessUBFrame(colors, mana_cost, type_line, power) {
 	await card.frames.forEach(item => addFrame([], item));
 	card.frames.reverse();
 }
-async function auto8thEditionFrame(colors, mana_cost, type_line, power, colorshifted = false) {
+async function auto8thEditionFrame(colors, mana_cost, type_line, power) {
 	var frames = card.frames.filter(frame => frame.name.includes('Extension'));
 
 	//clear the draggable frames
@@ -1522,26 +1523,30 @@ async function auto8thEditionFrame(colors, mana_cost, type_line, power, colorshi
 	document.querySelector('#frame-list').innerHTML = null;
 
 	var properties = cardFrameProperties(colors, mana_cost, type_line, power);
+	var style = 'regular';
+	if (type_line.toLowerCase().includes('enchantment creature') || type_line.toLowerCase().includes('enchantment artifact') || (document.querySelector('#autoframe-always-nyx').checked && type_line.toLowerCase().includes('enchantment'))) {
+		style = 'Nyx';
+	}
 
 	// Set frames
 	if (properties.pt) {
-		frames.push(make8thEditionFrameByLetter(properties.pt, 'PT', false, colorshifted));
+		frames.push(make8thEditionFrameByLetter(properties.pt, 'PT', false, style));
 	}
 	if (properties.pinlineRight) {
-		frames.push(make8thEditionFrameByLetter(properties.pinlineRight, 'Pinline', true, colorshifted));
+		frames.push(make8thEditionFrameByLetter(properties.pinlineRight, 'Pinline', true, style));
 	}
-	frames.push(make8thEditionFrameByLetter(properties.pinline, 'Pinline', false, colorshifted));
-	frames.push(make8thEditionFrameByLetter(properties.typeTitle, 'Type', false, colorshifted));
-	frames.push(make8thEditionFrameByLetter(properties.typeTitle, 'Title', false, colorshifted));
+	frames.push(make8thEditionFrameByLetter(properties.pinline, 'Pinline', false, style));
+	frames.push(make8thEditionFrameByLetter(properties.typeTitle, 'Type', false, style));
+	frames.push(make8thEditionFrameByLetter(properties.typeTitle, 'Title', false, style));
 	if (properties.pinlineRight) {
-		frames.push(make8thEditionFrameByLetter(properties.rulesRight, 'Rules', true, colorshifted));
+		frames.push(make8thEditionFrameByLetter(properties.rulesRight, 'Rules', true, style));
 	}
-	frames.push(make8thEditionFrameByLetter(properties.rules, 'Rules', false, colorshifted));
+	frames.push(make8thEditionFrameByLetter(properties.rules, 'Rules', false, style));
 	if (properties.frameRight) {
-		frames.push(make8thEditionFrameByLetter(properties.frameRight, 'Frame', true, colorshifted));
+		frames.push(make8thEditionFrameByLetter(properties.frameRight, 'Frame', true, style));
 	}
-	frames.push(make8thEditionFrameByLetter(properties.frame, 'Frame', false, colorshifted));
-	frames.push(make8thEditionFrameByLetter(properties.frame, 'Border', false, colorshifted));
+	frames.push(make8thEditionFrameByLetter(properties.frame, 'Frame', false, style));
+	frames.push(make8thEditionFrameByLetter(properties.frame, 'Border', false, style));
 
 	card.frames = frames;
 	card.frames.reverse();
@@ -2656,18 +2661,15 @@ function make8thEditionFrameByLetter(letter, mask = false, maskToRightHalf = fal
 			'name': frameName + ' Power/Toughness',
 			'src': '/img/frames/8th/pt/' + letter.toLowerCase() + '.png',
 			'masks': [],
-			'bounds': {
-				'height': 0.0839,
-				'width': 0.2147,
-				'x': 0.7227,
-				'y': 0.8796
-			}
+			'bounds': {x:1461/2010, y:2481/2814, width:414/2010, height:218/2814}
 		}
 	}
 
+	var stylePath = style == 'Nyx' ? 'nyx/' : '';
+
 	var frame = {
 		'name': frameName + ' Frame',
-		'src': '/img/frames/8th/' + letter.toLowerCase() + '.png',
+		'src': '/img/frames/8th/' + stylePath + letter.toLowerCase() + '.png',
 	}
 
 	if (letter.includes('L') && letter.length > 1) {
@@ -2681,10 +2683,6 @@ function make8thEditionFrameByLetter(letter, mask = false, maskToRightHalf = fal
 				'name': mask
 			}
 		]
-
-		if (mask == 'Border') {
-			frame.masks[0].src = frame.masks[0].src.replace('.png', '.svg');
-		}
 
 		if (maskToRightHalf) {
 			frame.masks.push({
@@ -3477,6 +3475,12 @@ async function addFrame(additionalMasks = [], loadingFrame = false) {
 		if ('complementary' in frameToAdd && frameToAdd.masks.length == 0) {
 			if (typeof frameToAdd.complementary == 'number') {
 				frameToAdd.complementary = [frameToAdd.complementary];
+			} else if (typeof frameToAdd.complementary == 'string') {
+				availableFrames.forEach((availableFrame, index, availableFrames) => {
+				  if (availableFrame.name == frameToAdd.complementary) {
+				  	frameToAdd.complementary = [index];
+				  }
+				})
 			}
 			const realFrameIndex = selectedFrameIndex;
 			for (const index of frameToAdd.complementary) {
@@ -3958,12 +3962,72 @@ function writeText(textObject, targetContext) {
 		var textColor = textObject.color || 'black';
 		if (textObject.conditionalColor != undefined) {
 			var codeParams = textObject.conditionalColor.split(":");
-			for (var eligibleFrame of codeParams[0].split(",")) {
-				eligibleFrame = eligibleFrame.replace(/_/g, " ").toLowerCase();
-				if (card.frames.findIndex(element => element.name.toLowerCase().includes(eligibleFrame)) != -1) {
-					textColor = codeParams[1];
-				}
-			}
+			const tagParts = codeParams[0].split(",");
+		    const colorToApply = codeParams[1];
+
+		    for (let part of tagParts) {
+
+		        // Split into frame name + mask rules
+		        const [rawFrameName, ...maskRuleParts] = part.split("*");
+		        const frameName = rawFrameName.replace(/_/g, " ").toLowerCase();
+
+		        const positiveMasks = [];
+		        const negativeMasks = [];
+
+		        for (let rule of maskRuleParts) {
+		            if (!rule) continue;
+		            if (rule.startsWith("!")) {
+		                negativeMasks.push(rule.substring(1).replace(/_/g, " ").toLowerCase());
+		            } else {
+		                positiveMasks.push(rule.replace(/_/g, " ").toLowerCase());
+		            }
+		        }
+
+		        const matchingFrames = card.frames.filter(f =>
+		            f.name.toLowerCase().includes(frameName)
+		        );
+
+		        for (const frame of matchingFrames) {
+		            const masks = frame.masks || [];
+
+		            // --------------------------------------
+		            // SPECIAL RULE:
+		            // If NO masks → always match immediately
+		            // --------------------------------------
+		            if (masks.length === 0) {
+		                textColor = colorToApply;
+		                lineContext.fillStyle = textColor;
+		                continue;
+		            }
+
+		            const maskNames = masks.map(m => m.name.toLowerCase());
+
+		            // --- Positive mask rules -------------------------
+		            let passesPositive = true;
+
+		            if (positiveMasks.length > 0) {
+		                passesPositive = positiveMasks.every(pos =>
+		                    maskNames.some(mask => mask.includes(pos))
+		                );
+		            }
+
+		            if (!passesPositive) continue;
+
+		            // --- Negative mask rules -------------------------
+		            let passesNegative = true;
+
+		            if (negativeMasks.length > 0) {
+		                passesNegative = negativeMasks.every(neg =>
+		                    !maskNames.some(mask => mask.includes(neg))
+		                );
+		            }
+
+		            if (!passesNegative) continue;
+
+		            // All conditions passed
+		            textColor = colorToApply;
+		        }
+		    }
 		}
 		var textFont = textObject.font || 'mplantin';
 		FontLoadTracker.track(textFont);
@@ -4102,14 +4166,74 @@ function writeText(textObject, targetContext) {
 				} else if (possibleCode == 'justify-right') {
 					textJustify = 'right';
 				} else if (possibleCode.includes('conditionalcolor')) {
-					var codeParams = possibleCode.split(":");
-					for (var eligibleFrame of codeParams[1].split(",")) {
-						eligibleFrame = eligibleFrame.replace(/_/g, " ");
-						if (card.frames.findIndex(element => element.name.toLowerCase().includes(eligibleFrame)) != -1) {
-							textColor = codeParams[2];
-							lineContext.fillStyle = textColor;
-						}
-					}
+				    const codeParams = possibleCode.split(":");
+				    const tagParts = codeParams[1].split(",");
+				    const colorToApply = codeParams[2];
+
+				    for (let part of tagParts) {
+
+				        // Split into frame name + mask rules
+				        const [rawFrameName, ...maskRuleParts] = part.split("*");
+				        const frameName = rawFrameName.replace(/_/g, " ").toLowerCase();
+
+				        const positiveMasks = [];
+				        const negativeMasks = [];
+
+				        for (let rule of maskRuleParts) {
+				            if (!rule) continue;
+				            if (rule.startsWith("!")) {
+				                negativeMasks.push(rule.substring(1).replace(/_/g, " ").toLowerCase());
+				            } else {
+				                positiveMasks.push(rule.replace(/_/g, " ").toLowerCase());
+				            }
+				        }
+
+				        const matchingFrames = card.frames.filter(f =>
+				            f.name.toLowerCase().includes(frameName)
+				        );
+
+				        for (const frame of matchingFrames) {
+				            const masks = frame.masks || [];
+
+				            // --------------------------------------
+				            // SPECIAL RULE:
+				            // If NO masks → always match immediately
+				            // --------------------------------------
+				            if (masks.length === 0) {
+				                textColor = colorToApply;
+				                lineContext.fillStyle = textColor;
+				                continue;
+				            }
+
+				            const maskNames = masks.map(m => m.name.toLowerCase());
+
+				            // --- Positive mask rules -------------------------
+				            let passesPositive = true;
+
+				            if (positiveMasks.length > 0) {
+				                passesPositive = positiveMasks.every(pos =>
+				                    maskNames.some(mask => mask.includes(pos))
+				                );
+				            }
+
+				            if (!passesPositive) continue;
+
+				            // --- Negative mask rules -------------------------
+				            let passesNegative = true;
+
+				            if (negativeMasks.length > 0) {
+				                passesNegative = negativeMasks.every(neg =>
+				                    !maskNames.some(mask => mask.includes(neg))
+				                );
+				            }
+
+				            if (!passesNegative) continue;
+
+				            // All conditions passed
+				            textColor = colorToApply;
+				            lineContext.fillStyle = textColor;
+				        }
+				    }
 				} else if (possibleCode.includes('fontcolor')) {
 					textColor = possibleCode.replace('fontcolor', '');
 					lineContext.fillStyle = textColor;
@@ -4246,8 +4370,11 @@ function writeText(textObject, targetContext) {
 						(getManaSymbol(textObject.manaPrefix + possibleCode) != undefined || getManaSymbol(textObject.manaPrefix + possibleCode.split('').reverse().join('')) != undefined)) {
 						manaSymbol = getManaSymbol(textObject.manaPrefix + possibleCode) || getManaSymbol(textObject.manaPrefix + possibleCode.split('').reverse().join(''));
 					} else {
+						if (possibleCode == 'brush' && textColor == 'white') {
+							possibleCode = 'whitebrush';
+						}
 						manaSymbol = getManaSymbol(possibleCode) || getManaSymbol(possibleCode.split('').reverse().join(''));
-					}
+					} 
 
 					var origManaSymbolColor = manaSymbolColor;
 					if (manaSymbol.matchColor && !manaSymbolColor && textColor !== 'black') {
@@ -5010,7 +5137,7 @@ function fetchSetSymbol() {
         uploadSetSymbol(hexproofUrl, 'resetSetSymbol');
 	} else {
 		var extension = 'svg';
-		if (['moc', 'ltr', 'ltc', 'cmm', 'who', 'scd', 'woe', 'wot', 'woc', 'lci', 'lcc', 'mkm', 'mkc', 'otj', 'otc', 'dft', 'drc', 'tdm', 'tdc', 'fin', 'fic', 'pio', 'om1'].includes(setCode.toLowerCase())) {
+		if (['xxxx'].includes(setCode.toLowerCase())) {
 			extension = 'png';
 		}
 		if (setSymbolAliases.has(setCode.toLowerCase())) setCode = setSymbolAliases.get(setCode.toLowerCase());
@@ -6036,11 +6163,16 @@ function parseStationCard(oracleText) {
 }
 
 function changeCardIndex() {
-	var cardToImport = scryfallCard[document.querySelector('#import-index').value];
+	let cardToImport = scryfallCard[document.querySelector('#import-index').value];
 	// Add debug logging for card Layout detection
 	console.log('Card layout:', cardToImport.layout);
 	console.log('Card version:', card.version);
 
+	if (cardToImport.set == "plst") {
+		var components = cardToImport.collector_number.split('-');
+		cardToImport.set = components[0];
+		cardToImport.collector_number = components[1];
+	}
     // Clear all existing text fields to prevent old data from persisting BUT preserve Multi Face reminder text if we're using a Multi Face frame
     var savedFuseReminderText = '';
 	var savedDescriptiveTexts = {};
@@ -6695,8 +6827,8 @@ else if (cardToImport.oracle_text && cardToImport.oracle_text.includes('STATION'
 	document.querySelector('#art-name').value = cardToImport.name;
 	fetchScryfallData(cardToImport.name, artFromScryfall, 'art');
 	if (document.querySelector('#importAllPrints').checked) {
-		// document.querySelector('#art-index').value = document.querySelector('#import-index').value;
-		// changeArtIndex();
+		document.querySelector('#art-index').value = document.querySelector('#import-index').value;
+		changeArtIndex();
 	}
 	//set symbol
 	if (!document.querySelector('#lockSetSymbolCode').checked) {
