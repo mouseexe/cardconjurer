@@ -96,13 +96,14 @@ def create_metadata_file(project_path: str):
     processed_cards = []
     for filename in image_filenames:
         base_name = os.path.splitext(filename)[0]
-        normalized_name = base_name.replace("’", "'")
+        stripped_name = base_name.lstrip('0123456789_ ')
+        normalized_name = stripped_name.replace("’", "'")
 
         if normalized_name in card_data_map:
             rarity = card_data_map[normalized_name].get('infoRarity', 'C')
-            processed_cards.append({'name': base_name, 'rarity': rarity})
+            processed_cards.append({'name': stripped_name, 'rarity': rarity})
         else:
-            print(f"Warning: No data found for '{base_name}' in .cardconjurer file. Skipping.")
+            print(f"Warning: No data found for '{stripped_name}' in .cardconjurer file. Skipping.")
 
     if not processed_cards:
         print("No matching cards found to create metadata file.")
@@ -303,10 +304,10 @@ def remove_accents(input_str: str) -> str:
 
 
 if __name__ == '__main__':
-    project = r'C:\Users\kayss\Pictures\Magic\Commander\A New Clue'
+    project = r'C:\Users\kayss\Pictures\Magic\Reserved List'
 
-    GRID_ROWS = 5
-    GRID_COLS = 5
+    GRID_ROWS = 6
+    GRID_COLS = 6
     BACKGROUND_COLOR = 'black'
     SPACING_PIXELS = 0
     DOWNSCALE_FACTOR = 3
