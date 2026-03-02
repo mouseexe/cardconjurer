@@ -147,6 +147,7 @@ window.FontLoadTracker = {
 //card object
 var card = {width:getStandardWidth(), height:getStandardHeight(), marginX:0, marginY:0, frames:[], artSource:fixUri('/img/blank.png'), artX:0, artY:0, artZoom:1, artRotate:0, setSymbolSource:fixUri('/img/blank.png'), setSymbolX:0, setSymbolY:0, setSymbolZoom:1, watermarkSource:fixUri('/img/blank.png'), watermarkX:0, watermarkY:0, watermarkZoom:1, watermarkLeft:'none', watermarkRight:'none', watermarkOpacity:0.4, version:'', manaSymbols:[]};
 window.cardDrawingPromiseResolver = null;
+window.cardDrawingPromiseResolver = null;
 //core images/masks
 const black = new Image(); black.crossOrigin = 'anonymous'; black.src = fixUri('/img/black.png');
 const blank = new Image(); blank.crossOrigin = 'anonymous'; blank.src = fixUri('/img/blank.png');
@@ -3494,6 +3495,7 @@ async function addFrame(additionalMasks = [], loadingFrame = false) {
 		item.image.src = blank.src;
 		item.image.onload = drawFrames;
 		ImageLoadTracker.track(fixUri(item.src));
+		ImageLoadTracker.track(fixUri(item.src));
 		item.image.src = fixUri(item.src);
 	});
 	frameToAdd.image = new Image();
@@ -3503,6 +3505,7 @@ async function addFrame(additionalMasks = [], loadingFrame = false) {
 	if ('stretch' in frameToAdd) {
 		stretchSVG(frameToAdd);
 	} else {
+		ImageLoadTracker.track(fixUri(frameToAdd.src));
 		ImageLoadTracker.track(fixUri(frameToAdd.src));
 		frameToAdd.image.src = fixUri(frameToAdd.src);
 	}
@@ -4024,6 +4027,7 @@ function writeText(textObject, targetContext) {
 		}
 		var textFont = textObject.font || 'mplantin';
 		FontLoadTracker.track(textFont);
+		FontLoadTracker.track(textFont);
 		var textAlign = textObject.align || 'left';
 		var textJustify = textObject.justify || 'left';
 		var textShadowColor = textObject.shadow || 'black';
@@ -4243,6 +4247,7 @@ function writeText(textObject, targetContext) {
 						textFont = savedFont;
 						wordToWrite = word;
 					}
+					FontLoadTracker.track(textFont);
 					FontLoadTracker.track(textFont);
 					textFontExtension = '';
 					textFontStyle = '';
@@ -4868,6 +4873,7 @@ async function addTextbox(textboxType) {
 //ART TAB
 function uploadArt(imageSource, otherParams) {
 	ImageLoadTracker.track(imageSource);
+	ImageLoadTracker.track(imageSource);
 	art.src = imageSource;
 	if (otherParams && otherParams == 'autoFit') {
 		art.onload = function() {
@@ -5063,6 +5069,7 @@ function artStopDrag(e) {
 //SET SYMBOL TAB
 function uploadSetSymbol(imageSource, otherParams) {
 	ImageLoadTracker.track(imageSource);
+	ImageLoadTracker.track(imageSource);
 	setSymbol.src = imageSource;
 	if (otherParams && otherParams == 'resetSetSymbol') {
 		setSymbol.onload = function() {
@@ -5153,6 +5160,7 @@ function lockSetSymbolURL() {
 }
 //WATERMARK TAB
 function uploadWatermark(imageSource, otherParams) {
+	ImageLoadTracker.track(imageSource);
 	ImageLoadTracker.track(imageSource);
 	watermark.src = imageSource;
 	if (otherParams && otherParams == 'resetWatermark') {
@@ -5475,7 +5483,7 @@ function drawCard() {
 		var y = parseInt(card.serialY) || 1383;
 		var scale = parseFloat(card.serialScale) || 1.0;
 
-		cardContext.drawImage(serial, scaleX(x/2010), scaleY(y/2814), scaleX(464/2010) * scale, scaleY(143/2814) * scale);
+		cardContext.drawImage(serial, scaleX(x/2010), scaleY(y/2814), scaleWidth(464/2010) * scale, scaleHeight(143/2814) * scale);
 
 		var number = {
 			name:"Number",
@@ -5537,6 +5545,11 @@ function drawCard() {
 	// show preview
 	previewContext.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
 	previewContext.drawImage(cardCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
+
+	if (window.cardDrawingPromiseResolver) {
+        window.cardDrawingPromiseResolver();
+        window.cardDrawingPromiseResolver = null;
+	}
 
 	if (window.cardDrawingPromiseResolver) {
         window.cardDrawingPromiseResolver();
@@ -6207,7 +6220,9 @@ function changeCardIndex() {
 	var langFontCode = "";
 	if (cardToImport.lang == "ph") {langFontCode = "{fontphyrexian}"}
 	// Handle Multi Faced Card Layouts
-	if (['flip', 'modal_dfc', 'transform', 'split', 'adventure'].includes(cardToImport.layout) && ['flip', 'split', 'fuse', 'aftermath', 'adventure', 'omen', 'room', 'battle'].includes(card.version)) {
+	const multiFacedVersions = ['flip', 'split', 'fuse', 'aftermath', 'adventure', 'omen', 'room', 'battle', 'transform'];
+	const isMultiFacedVersion = multiFacedVersions.some(keyword => card.version.toLowerCase().includes(keyword));
+	if (['flip', 'modal_dfc', 'transform', 'split', 'adventure'].includes(cardToImport.layout) && isMultiFacedVersion) {
 		const flipData = parseMultiFacedCards(cardToImport);
 		if (!flipData) {
 			console.error('Failed to parse Multi Faced card data');
@@ -6274,9 +6289,15 @@ function changeCardIndex() {
             if (card.text.pt2) {
                 card.text.pt2.text = flipData.back.pt || '';
             }
-		} else if (card.version === 'battle' && card.text?.pt2) {
-			// Battle back face uses standard PT (transformed creature)
+		}
+		
+		// Handle pt2 for battle and transform front faces (cards without title2/mana2)
+		if ((card.version === 'battle' || card.version.includes('transform') || card.version.includes('Transform')) && card.text?.pt2) {
 			card.text.pt2.text = flipData.back.pt || '';
+		}
+
+		if ((card.version.includes('transform') || card.version.includes('Transform')) && card.text?.reminder && flipData.back.pt) {
+			card.text.reminder.text = flipData.back.pt;
 		}
 	
 		textEdited();
@@ -7396,6 +7417,7 @@ bindInputs('#show-guidelines', '#show-guidelines-2', true);
 
 // Load / init whatever
 loadScript('/js/frames/groupStandard-3.js');
+loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
 loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
 loadAvailableCards();
 initDraggableArt();
