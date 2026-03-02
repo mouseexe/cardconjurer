@@ -147,7 +147,6 @@ window.FontLoadTracker = {
 //card object
 var card = {width:getStandardWidth(), height:getStandardHeight(), marginX:0, marginY:0, frames:[], artSource:fixUri('/img/blank.png'), artX:0, artY:0, artZoom:1, artRotate:0, setSymbolSource:fixUri('/img/blank.png'), setSymbolX:0, setSymbolY:0, setSymbolZoom:1, watermarkSource:fixUri('/img/blank.png'), watermarkX:0, watermarkY:0, watermarkZoom:1, watermarkLeft:'none', watermarkRight:'none', watermarkOpacity:0.4, version:'', manaSymbols:[]};
 window.cardDrawingPromiseResolver = null;
-window.cardDrawingPromiseResolver = null;
 //core images/masks
 const black = new Image(); black.crossOrigin = 'anonymous'; black.src = fixUri('/img/black.png');
 const blank = new Image(); blank.crossOrigin = 'anonymous'; blank.src = fixUri('/img/blank.png');
@@ -3495,7 +3494,6 @@ async function addFrame(additionalMasks = [], loadingFrame = false) {
 		item.image.src = blank.src;
 		item.image.onload = drawFrames;
 		ImageLoadTracker.track(fixUri(item.src));
-		ImageLoadTracker.track(fixUri(item.src));
 		item.image.src = fixUri(item.src);
 	});
 	frameToAdd.image = new Image();
@@ -3505,7 +3503,6 @@ async function addFrame(additionalMasks = [], loadingFrame = false) {
 	if ('stretch' in frameToAdd) {
 		stretchSVG(frameToAdd);
 	} else {
-		ImageLoadTracker.track(fixUri(frameToAdd.src));
 		ImageLoadTracker.track(fixUri(frameToAdd.src));
 		frameToAdd.image.src = fixUri(frameToAdd.src);
 	}
@@ -4027,7 +4024,6 @@ function writeText(textObject, targetContext) {
 		}
 		var textFont = textObject.font || 'mplantin';
 		FontLoadTracker.track(textFont);
-		FontLoadTracker.track(textFont);
 		var textAlign = textObject.align || 'left';
 		var textJustify = textObject.justify || 'left';
 		var textShadowColor = textObject.shadow || 'black';
@@ -4247,7 +4243,6 @@ function writeText(textObject, targetContext) {
 						textFont = savedFont;
 						wordToWrite = word;
 					}
-					FontLoadTracker.track(textFont);
 					FontLoadTracker.track(textFont);
 					textFontExtension = '';
 					textFontStyle = '';
@@ -4873,7 +4868,6 @@ async function addTextbox(textboxType) {
 //ART TAB
 function uploadArt(imageSource, otherParams) {
 	ImageLoadTracker.track(imageSource);
-	ImageLoadTracker.track(imageSource);
 	art.src = imageSource;
 	if (otherParams && otherParams == 'autoFit') {
 		art.onload = function() {
@@ -5069,7 +5063,6 @@ function artStopDrag(e) {
 //SET SYMBOL TAB
 function uploadSetSymbol(imageSource, otherParams) {
 	ImageLoadTracker.track(imageSource);
-	ImageLoadTracker.track(imageSource);
 	setSymbol.src = imageSource;
 	if (otherParams && otherParams == 'resetSetSymbol') {
 		setSymbol.onload = function() {
@@ -5160,7 +5153,6 @@ function lockSetSymbolURL() {
 }
 //WATERMARK TAB
 function uploadWatermark(imageSource, otherParams) {
-	ImageLoadTracker.track(imageSource);
 	ImageLoadTracker.track(imageSource);
 	watermark.src = imageSource;
 	if (otherParams && otherParams == 'resetWatermark') {
@@ -7417,7 +7409,6 @@ bindInputs('#show-guidelines', '#show-guidelines-2', true);
 
 // Load / init whatever
 loadScript('/js/frames/groupStandard-3.js');
-loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
 loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
 loadAvailableCards();
 initDraggableArt();
