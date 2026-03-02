@@ -73,7 +73,6 @@ window.ImageLoadTracker = {
         if (!this.isTracking || !src || src.includes('blank.png')) {
             return;
         }
-        
         const promise = new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -131,14 +130,12 @@ window.FontLoadTracker = {
         if (this.fonts.size === 0) {
             return Promise.resolve(); // No fonts to wait for.
         }
-        
         const fontPromises = [];
         // The document.fonts.load() method checks if a font is ready for use.
         // It requires a size (e.g., '12px'), but the family name is the crucial part.
         for (const font of this.fonts) {
             fontPromises.push(document.fonts.load(`12px ${font}`));
         }
-        
         console.log('Waiting for fonts to load:', Array.from(this.fonts));
         return Promise.all(fontPromises);
     }
@@ -5542,11 +5539,6 @@ function drawCard() {
         window.cardDrawingPromiseResolver();
         window.cardDrawingPromiseResolver = null;
 	}
-
-	if (window.cardDrawingPromiseResolver) {
-        window.cardDrawingPromiseResolver();
-        window.cardDrawingPromiseResolver = null;
-	}
 }
 //DOWNLOADING
 function downloadCard(alt = false, jpeg = false) {
@@ -5634,9 +5626,7 @@ async function bulkDownloadZip() {
 
             ImageLoadTracker.start();
             FontLoadTracker.start();
-            
             await loadCard(key);
-            
             drawText();
             
             const imagePromise = ImageLoadTracker.waitForAll();
