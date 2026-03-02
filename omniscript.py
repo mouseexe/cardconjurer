@@ -310,7 +310,7 @@ if __name__ == '__main__':
     GRID_COLS = 6
     BACKGROUND_COLOR = 'black'
     SPACING_PIXELS = 0
-    DOWNSCALE_FACTOR = 3
+    DOWNSCALE_FACTOR = 5
 
     run_image_pipeline(
         project_path=project,

@@ -5579,7 +5579,6 @@ function downloadCard(alt = false, jpeg = false) {
 	}
 }
 async function bulkDownloadZip() {
-    // 1. Initial checks for libraries and saved cards.
     if (typeof JSZip === 'undefined') {
         notify('Required library (JSZip) has not loaded yet. Please wait a moment and try again.', 5);
         return;
@@ -5593,7 +5592,6 @@ async function bulkDownloadZip() {
     let fileHandle = null;
     let useStreaming = false;
 
-    // 2. Trigger the file picker immediately to capture the user gesture.
     if (window.showSaveFilePicker) {
         try {
             notify('Please choose a location to save your ZIP file.', 15);
@@ -5606,17 +5604,14 @@ async function bulkDownloadZip() {
             });
             useStreaming = true;
         } catch (err) {
-            // This error occurs if the user clicks "Cancel" in the save dialog.
             if (err.name === 'AbortError') {
                 notify('Save operation cancelled.', 3);
-                return; // Exit the function entirely if the user cancels.
+                return;
             }
-            // If another error occurs, fall back to the in-memory method.
             console.error("Could not get file handle, falling back to in-memory method:", err);
         }
     }
 
-    // 3. Save the current state and prepare the zip object.
     notify(`Preparing to process ${cardKeys.length} cards...`, 10);
     const zip = new JSZip();
     const tempKey = '__temp_current_card_state__';
@@ -5625,16 +5620,18 @@ async function bulkDownloadZip() {
         delete frame.image;
         frame.masks.forEach(mask => delete mask.image);
     });
-    localStorage.setItem(tempKey, JSON.stringify(cardToSave));
+    
+    await idbKeyval.set(tempKey, JSON.stringify(cardToSave));
 
-    // 4. Loop through each saved card to render and add it to the zip object.
     for (const [index, key] of cardKeys.entries()) {
         try {
 			notify(`Processing card ${index + 1} of ${cardKeys.length}: ${key}`, 1);
 
             ImageLoadTracker.start();
             FontLoadTracker.start();
+            
             await loadCard(key);
+            
             drawText();
             
             const imagePromise = ImageLoadTracker.waitForAll();
@@ -5659,10 +5656,8 @@ async function bulkDownloadZip() {
         }
     }
 
-    // 5. Generate and save the ZIP file using the appropriate method.
     try {
         if (useStreaming && fileHandle) {
-            // Ideal Path: Manually pump the JSZip stream to the WritableStream.
             notify('Saving ZIP file to disk...', 10);
             const writable = await fileHandle.createWritable();
 
@@ -5678,8 +5673,7 @@ async function bulkDownloadZip() {
             notify('ZIP file saved successfully!', 5);
 
         } else {
-            // Fallback Path: For browsers without streaming support.
-            notify('Streaming not supported. Building ZIP in memory... This may be slow or fail.', 10);
+            notify('Streaming not supported. Building ZIP in memory...', 10);
             const content = await zip.generateAsync({ type: 'blob' });
             
             const downloadElement = document.createElement('a');
@@ -5694,10 +5688,9 @@ async function bulkDownloadZip() {
         notify('An error occurred while saving the ZIP file.', 5);
     }
     
-    // 6. Restore the user's original card state.
     await loadCard(tempKey);
-    localStorage.removeItem(tempKey);
-    console.log('Bulk download process finished. User state restored.');
+    await idbKeyval.del(tempKey);
+    console.log('Bulk download finished. User state restored.');
 }
 //IMPORT/SAVE TAB
 function importCard(cardObject) {
@@ -6849,19 +6842,21 @@ function importChanged() {
 	var unique = document.querySelector('#importAllPrints').checked ? 'prints' : '';
 	fetchScryfallData(document.querySelector("#import-name").value, importCard, unique);
 }
-function saveCard(saveFromFile) {
-	var cardKeys = JSON.parse(localStorage.getItem('cardKeys')) || [];
-	var cardKey, cardToSave;
-	if (saveFromFile) {
-		cardKey = saveFromFile.key;
-	} else {
-		cardKey = getCardName();
-	}
-	if (!saveFromFile) {
-		cardKey = prompt('Enter the name you would like to save your card under:', cardKey);
-		if (!cardKey) {return null;}
-	}
-	cardKey = cardKey.trim();
+async function saveCard(saveFromFile) {
+    var cardKeys = JSON.parse(localStorage.getItem('cardKeys')) || [];
+    var cardKey, cardToSave;
+
+    if (saveFromFile) {
+        cardKey = saveFromFile.key;
+    } else {
+        cardKey = getCardName();
+    }
+
+    if (!saveFromFile) {
+        cardKey = prompt('Enter the name you would like to save your card under:', cardKey);
+        if (!cardKey) { return null; }
+    }
+    cardKey = cardKey.trim();
 	if (cardKeys.includes(cardKey)) {
 		if (!confirm('Would you like to overwrite your card previously saved as "' + cardKey + '"?\n(Clicking "cancel" will affix a version number)')) {
 			var originalCardKey = cardKey;
@@ -6873,32 +6868,36 @@ function saveCard(saveFromFile) {
 		}
 	}
 	if (saveFromFile) {
-		cardToSave = saveFromFile.data;
-	} else {
-		cardToSave = JSON.parse(JSON.stringify(card));
-		cardToSave.frames.forEach(frame => {
-			delete frame.image;
-			frame.masks.forEach(mask => delete mask.image);
-		});
-	}
-	try {
-		localStorage.setItem(cardKey, JSON.stringify(cardToSave));
-		if (!cardKeys.includes(cardKey)) {
-			cardKeys.push(cardKey);
-			cardKeys.sort();
-			localStorage.setItem('cardKeys', JSON.stringify(cardKeys));
-			loadAvailableCards(cardKeys);
-		}
-	} catch (error) {
-		notify('You have exceeded your 5MB of local storage, and your card has failed to save. If you would like to continue saving cards, please download all saved cards, then delete all saved cards to free up space.<br><br>Local storage is most often exceeded by uploading large images directly from your computer. If possible/convenient, using a URL avoids the need to save these large images.<br><br>Apologies for the inconvenience.');
-	}
+        cardToSave = saveFromFile.data;
+    } else {
+        cardToSave = JSON.parse(JSON.stringify(card));
+        cardToSave.frames.forEach(frame => {
+            delete frame.image;
+            frame.masks.forEach(mask => delete mask.image);
+        });
+    }
+
+    try {
+        await idbKeyval.set(cardKey, JSON.stringify(cardToSave));
+        
+        if (!cardKeys.includes(cardKey)) {
+            cardKeys.push(cardKey);
+            cardKeys.sort();
+            localStorage.setItem('cardKeys', JSON.stringify(cardKeys));
+            loadAvailableCards(cardKeys);
+        }
+    } catch (error) {
+        console.error("Storage error:", error);
+        notify('Failed to save. Check if your browser or disk is full.', 5);
+    }
 }
 async function loadCard(selectedCardKey) {
 	//clear the draggable frames
 	document.querySelector('#frame-list').innerHTML = null;
 	//clear the existing card, then replace it with the new JSON
 	card = {};
-	card = JSON.parse(localStorage.getItem(selectedCardKey));
+	const savedData = await idbKeyval.get(selectedCardKey);
+    card = JSON.parse(savedData);
 	//if the card was loaded properly...
 	if (card) {
 		//load values from card into html inputs
@@ -6961,44 +6960,58 @@ async function loadCard(selectedCardKey) {
 		notify(selectedCardKey + ' failed to load.', 5)
 	}
 }
-function deleteCard() {
+async function deleteCard() {
 	var keyToDelete = document.querySelector('#load-card-options').value;
 	if (keyToDelete) {
 		var cardKeys = JSON.parse(localStorage.getItem('cardKeys'));
+		await idbKeyval.del(keyToDelete);
 		cardKeys.splice(cardKeys.indexOf(keyToDelete), 1);
 		cardKeys.sort();
 		localStorage.setItem('cardKeys', JSON.stringify(cardKeys));
-		localStorage.removeItem(keyToDelete);
 		loadAvailableCards(cardKeys);
 	}
 }
-function deleteSavedCards() {
+async function deleteSavedCards() {
 	if (confirm('WARNING:\n\nALL of your saved cards will be deleted! If you would like to save these cards, please make sure you have downloaded them first. There is no way to undo this.\n\n(Press "OK" to delete your cards)')) {
 		var cardKeys = JSON.parse(localStorage.getItem('cardKeys'));
-		cardKeys.forEach(key => localStorage.removeItem(key));
+		for (const key of cardKeys) {
+			await idbKeyval.del(key);
+		}
 		localStorage.setItem('cardKeys', JSON.stringify([]));
 		loadAvailableCards([]);
 	}
 }
 async function downloadSavedCards() {
 	var cardKeys = JSON.parse(localStorage.getItem('cardKeys'));
-	if (cardKeys) {
+	if (cardKeys && cardKeys.length > 0) {
 		var allSavedCards = [];
-		cardKeys.forEach(item => {
-			allSavedCards.push({key:item, data:JSON.parse(localStorage.getItem(item))});
-		});
+		for (const key of cardKeys) {
+			const cardData = await idbKeyval.get(key);
+			if (cardData) {
+				allSavedCards.push({
+					key: key, 
+					data: JSON.parse(cardData)
+				});
+			}
+		}
 		var download = document.createElement('a');
 		download.href = URL.createObjectURL(new Blob([JSON.stringify(allSavedCards)], {type:'text'}));
 		download.download = 'saved-cards.cardconjurer';
 		document.body.appendChild(download);
 		await download.click();
 		download.remove();
+	} else {
+		notify("No cards found to download.", 5);
 	}
 }
 function uploadSavedCards(event) {
 	var reader = new FileReader();
-	reader.onload = function () {
-		JSON.parse(reader.result).forEach(item => saveCard(item));
+	reader.onload = async function () {
+		const cardsToUpload = JSON.parse(reader.result);
+		for (const item of cardsToUpload) {
+			await saveCard(item);
+		}
+		notify(`Successfully imported ${cardsToUpload.length} cards.`);
 	}
 	reader.readAsText(event.target.files[0]);
 }
