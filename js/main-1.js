@@ -120,7 +120,9 @@ function bindInputs(query1, query2, checkbox = false) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-	document.body.dispatchEvent(new Event('doCreate'));
+	setTimeout(function() {
+		document.body.dispatchEvent(new Event('doCreate'));
+	}, 50);
 })
 
 document.onkeyup = function(e) {
