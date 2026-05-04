@@ -1,5 +1,9 @@
 //URL Params
 var params = new URLSearchParams(window.location.search);
+if (typeof bindInputs === 'undefined') {
+	window.location.href = '/';
+	throw new Error('Redirecting to root because context is missing.');
+}
 const debugging = params.get('debug') != null;
 if (debugging) {
 	alert('debugging - 4.0');
@@ -7103,6 +7107,9 @@ async function loadCard(selectedCardKey) {
     card = JSON.parse(savedData);
 	//if the card was loaded properly...
 	if (card) {
+		ImageLoadTracker.start();
+		FontLoadTracker.start();
+
 		//load values from card into html inputs
 		document.querySelector('#info-number').value = card.infoNumber;
 		document.querySelector('#info-rarity').value = card.infoRarity;
@@ -7139,26 +7146,64 @@ async function loadCard(selectedCardKey) {
 		serialInfoEdited();
 
 		card.frames.reverse();
-		await card.frames.forEach(item => addFrame([], item));
+
+		for (const item of card.frames) {
+			await addFrame([], item);
+		}
 		card.frames.reverse();
+		
 		if (card.onload) {
 			await loadScript(card.onload);
 		}
-		card.manaSymbols.forEach(item => loadScript(item));
+		for (const item of card.manaSymbols) {
+			await loadScript(item);
+		}
+
 		//canvases
-		var canvasesResized = false;
 		canvasList.forEach(name => {
 			if (window[name + 'Canvas'].width != card.width * (1 + card.marginX) || window[name + 'Canvas'].height != card.height * (1 + card.marginY)) {
 				sizeCanvas(name);
-				canvasesResized = true;
 			}
 		});
-		if (canvasesResized) {
-			drawTextBuffer();
-			drawFrames();
-			bottomInfoEdited();
-			watermarkEdited();
+
+		// Trigger parsing to register fonts
+		if (typeof mana !== 'undefined') {
+			await Promise.all(Array.from(mana.values()).map(m => {
+				if (!m || !m.image) return Promise.resolve();
+				return new Promise(resolve => {
+					if (m.image.complete) resolve();
+					else {
+						const cleanup = () => {
+							m.image.removeEventListener('load', cleanup);
+							m.image.removeEventListener('error', cleanup);
+							resolve();
+						};
+						m.image.addEventListener('load', cleanup);
+						m.image.addEventListener('error', cleanup);
+					}
+				});
+			}));
 		}
+
+		await drawText();
+
+		// Wait for both images and fonts to finish loading
+		await Promise.all([
+			ImageLoadTracker.waitForAll(),
+			FontLoadTracker.waitForAll()
+		]);
+
+		ImageLoadTracker.stop();
+		FontLoadTracker.stop();
+
+		await new Promise(resolve => setTimeout(resolve, 50));
+
+		// Redraw completely after fonts and images are ready
+		await drawText();
+		drawFrames();
+		await bottomInfoEdited();
+		watermarkEdited();
+		drawCard();
 	} else {
 		notify(selectedCardKey + ' failed to load.', 5)
 	}
