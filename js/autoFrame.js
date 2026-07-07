@@ -325,7 +325,7 @@ function getFrameLetterConfig(frameType) {
 				if (mask === 'Crown') return `crowns/m15Crown${letter}.png`;
 				if (mask === 'Inner Crown') return `innerCrowns/m15InnerCrown${letter}${style}.png`;
 				if (mask === 'PT') return `regular/m15PT${letter}.png`;
-				
+
 				// Main frame
 				let path = `${style.toLowerCase()}/m15Frame${letter}.png`;
 				if (style === 'snow') {
@@ -340,8 +340,10 @@ function getFrameLetterConfig(frameType) {
 			},
 			maskPath: (mask) => `regular/m15Mask${mask}.png`,
 			letterTransform: (letter, mask, style) => {
-				// Strip land indicator 'L' for all masks and main frame
-				if (letter.includes('L') && letter.length > 1) {
+				// Crown and Inner Crown have no land-colored variants — strip the 'L' indicator.
+				// For all other layers (Rules, Frame, Type, Title, Pinline, Border) the pathBuilder
+				// already maps 'WL' → 'lw.png' etc., so preserve the full letter.
+				if ((mask === 'Crown' || mask === 'Inner Crown') && letter.includes('L') && letter.length > 1) {
 					return letter[0];
 				}
 				if (letter === 'L' && style === 'Nyx') {
@@ -417,8 +419,9 @@ function getFrameLetterConfig(frameType) {
 				return `m15/regular/m15Mask${mask}.png`;
 			},
 			letterTransform: (letter, mask, style) => {
-				// Strip land indicator 'L' for all masks and main frame
-				if (letter.includes('L') && letter.length > 1) {
+				// Crown and Inner Crown have no land-colored variants — strip the 'L' indicator.
+				// The pathBuilder handles 'WL' → 'wl.png' etc. for all other layers.
+				if ((mask === 'Crown' || mask === 'Inner Crown') && letter.includes('L') && letter.length > 1) {
 					return letter[0];
 				}
 				if (letter === 'L' && style === 'Nyx') {
@@ -804,14 +807,16 @@ function getFrameLetterConfig(frameType) {
 			bounds: {
 				crownBorderCover: {height: 0.0177, width: 0.9214, x: 0.0394, y: 0.0277},
 				crown: {height: 0.1667, width: 0.9454, x: 0.0274, y: 0.0191},
+				innerCrown: {height: 0.0239, width: 0.672, x: 0.164, y: 0.0239},
 				pt: {x: 0.7573, y: 0.8848, width: 0.188, height: 0.0733}
 			},
 			pathBuilder: (letter, mask, style) => {
 				const colorLetter = letter.toLowerCase();
 				if (mask === 'Crown') return `../m15/crowns/m15Crown${letter}.png`;  // Use M15 crowns
+				if (mask === 'Inner Crown') return `../m15/innerCrowns/m15InnerCrown${letter}${style}.png`;  // Use M15 inner crowns
 				if (mask === 'PT') return `../m15/regular/m15PT${letter}.png`;  // Use M15 PT boxes
-				// Handle Nyx style
-				if (style === 'Nyx') return `nyx/${colorLetter}.png`;
+				// Handle Nyx style - Land has no Nyx variant, fall back to regular
+				if (style === 'Nyx' && letter !== 'L') return `nyx/${colorLetter}.png`;
 				// Main frame
 				return `regular/${colorLetter}.png`;
 			},
@@ -1251,33 +1256,30 @@ function makePrepareFrameByLetter(letter, mask = false, maskToRightHalf = false,
 // correct order. Handles special cases for different frame types.
 
 /**
- * Builds a complete frame by layering multiple frame elements
+ * Computes and the frame layers for a given set of card attributes.
  * @param {string} frameType - The frame type identifier
  * @param {Array} colors - Array of color letters detected from the card
  * @param {string} mana_cost - The mana cost string
  * @param {string} type_line - The card type line
  * @param {string} power - The power/toughness string
+ * @param {string} mana2Text - Secondary mana cost text (adventure/omen/prepare spell)
+ * @returns {Array} Array of frame objects to push onto the card
  */
-async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) {
+function buildAutoFrames(frameType, colors, mana_cost, type_line, power, mana2Text = '') {
 	const config = getFrameTypeConfig(frameType);
 	if (!config) {
 		console.error('Unknown frame type:', frameType);
-		return;
+		return [];
 	}
-	
-	// Preserve existing extension frames and stamps that shouldn't be rebuilt
-	var frames = card.frames.filter(config.filterFrames);
 
-	// Clear the current frame list to rebuild it
-	card.frames = [];
-	document.querySelector('#frame-list').innerHTML = null;
+	var frames = [];
 
 	// Get frame properties (pinline colors, PT, etc.) based on card attributes
-	var properties = cardFrameProperties(colors, mana_cost, type_line, power, 
-		frameType === 'Borderless' || frameType === 'BorderlessUB' ? 'Borderless' : 
-		frameType === 'Etched' ? 'Etched' : 
+	var properties = cardFrameProperties(colors, mana_cost, type_line, power,
+		frameType === 'Borderless' || frameType === 'BorderlessUB' ? 'Borderless' :
+		frameType === 'Etched' ? 'Etched' :
 		frameType === 'Seventh' ? 'Seventh' : undefined);
-	
+
 	// ----------------------------------------------------------------
 	// VAULT SPECIAL HANDLING FOR TWO-COLOR CARDS
 	// ----------------------------------------------------------------
@@ -1290,7 +1292,7 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 		properties.rules = colors[0];
 		properties.rulesRight = colors[1];
 	}
-	
+
 	// ----------------------------------------------------------------
 	// JAPAN SHOWCASE SPECIAL HANDLING FOR TWO-COLOR CARDS
 	// ----------------------------------------------------------------
@@ -1299,16 +1301,16 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 		// Use second color for PT box
 		properties.pt = colors[1];
 	}
-	
+
 	// ----------------------------------------------------------------
 	// STYLE DETERMINATION
 	// ----------------------------------------------------------------
 	// Determine which style variant to use (regular, Nyx, snow, etc.)
 	var style = 'regular';
-	const isNyxEnchantment = type_line.toLowerCase().includes('enchantment creature') || 
-		type_line.toLowerCase().includes('enchantment artifact') || 
+	const isNyxEnchantment = type_line.toLowerCase().includes('enchantment creature') ||
+		type_line.toLowerCase().includes('enchantment artifact') ||
 		(document.querySelector('#autoframe-always-nyx').checked && type_line.toLowerCase().includes('enchantment'));
-	
+
 	// Universes Beyond and UBNew have special Nyx handling
 	if (frameType === 'UB' || frameType === 'UBNew') {
 		style = false;
@@ -1330,7 +1332,7 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 	// FRAME LAYER BUILDING
 	// ----------------------------------------------------------------
 	// Build frames in Z-order (bottom to top). Each layer is added to the frames array.
-	
+
 	// LEGENDARY CROWNS (if legendary creature/planeswalker)
 	if (config.supportsCrown && type_line.toLowerCase().includes('legendary')) {
 		// Add inner Nyx starfield crowns for enchantments
@@ -1346,7 +1348,7 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 			frames.push(config.makeFrameFunction(properties.pinlineRight, 'Crown', true, style));
 		}
 		frames.push(config.makeFrameFunction(properties.pinline, "Crown", false, style));
-		
+
 		// Borderless and Extended Art frames need a special crown outline layer
 		if (frameType === 'Borderless' || frameType === 'BorderlessUB' || frameType === 'M15BoxTopper' || frameType === 'M15ExtendedArtShort') {
 			frames.push({
@@ -1356,7 +1358,7 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 				'bounds': {x:0.028, y:0.0172, width:0.944, height:0.1062}
 			});
 		}
-		
+
 		// Crown border cover hides the border under the crown (not used for Vault)
 		if (frameType !== 'Vault') {
 			let crownBorderCover = config.makeFrameFunction(properties.pinline, "Crown Border Cover", false, style);
@@ -1367,7 +1369,7 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 			frames.push(crownBorderCover);
 		}
 	}
-	
+
 	// HOLO STAMPS (security stamps at bottom center)
 	if (config.supportsStamp) {
 		// M15EighthUB uses special multicolor stamp handling
@@ -1375,7 +1377,7 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 		if (frameType === 'M15EighthUB') {
 			const isLand = type_line.toLowerCase().includes('land');
 			const isMulticolor = properties.pinlineRight;
-			
+
 			if (isLand || isMulticolor) {
 				// Add colored stamp pinlines (masks that tint the base stamp)
 				if (isMulticolor) {
@@ -1386,7 +1388,7 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 				// Left half (or full stamp for monocolor lands) - strip land indicator
 				let leftColor = properties.pinline.replace(/L/gi, '');
 				frames.push(config.makeFrameFunction(leftColor, 'Stamp Pinline', false, style));
-				
+
 				// Add the base stamp (land='l', multicolor='m' calculated from pinline combo)
 				let baseStampLetter = isLand ? 'l' : (properties.pinline + properties.pinlineRight);
 				frames.push(config.makeFrameFunction(baseStampLetter, 'Stamp', false, style));
@@ -1410,12 +1412,12 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 			frames.push(config.makeFrameFunction(properties.pinline, "Stamp", false, style));
 		}
 	}
-	
+
 	// POWER/TOUGHNESS BOX (for creatures)
 	if (config.supportsPT && properties.pt) {
 		frames.push(config.makeFrameFunction(properties.pt, 'PT', false, style));
 	}
-	
+
 	// PINLINES (colored accent lines at top/bottom of text box)
 	if (properties.pinlineRight) {
 		let frame = config.makeFrameFunction(properties.pinlineRight, 'Pinline', true, style);
@@ -1423,7 +1425,7 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 	}
 	let pinlineFrame = config.makeFrameFunction(properties.pinline, 'Pinline', false, style);
 	if (pinlineFrame) frames.push(pinlineFrame);
-	
+
 	// MAIN FRAME LAYERS (Type, Title, Rules, Frame, Border)
 	// Seventh Edition has a different layer order
 	if (frameType === 'Seventh') {
@@ -1438,26 +1440,36 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 		// Standard layer order for modern frames
 		frames.push(config.makeFrameFunction(properties.typeTitle, 'Type', false, style));
 		frames.push(config.makeFrameFunction(properties.typeTitle, 'Title', false, style));
-		
+
 		// ADVENTURE SPECIAL HANDLING - Rules (Left) for adventure side
 		if (frameType === 'Adventure') {
-			// Detect adventure cost colors from card.text.mana2 (adventure mana cost)
+			// Detect adventure cost colors from mana2Text (adventure mana cost)
 			let adventureColors = [];
-			if (card.text.mana2 && card.text.mana2.text) {
-				let manaText = card.text.mana2.text.toUpperCase();
-				
+			if (mana2Text) {
+				let manaText = mana2Text.toUpperCase();
+
 				// For hybrid mana (contains /), only use the second color
 				if (manaText.includes('/')) {
 					// Extract all colors from hybrid symbols like {G/W}, then use the second one
 					let colors = manaText.split('').filter(char => ['W', 'U', 'B', 'R', 'G'].includes(char));
-					if (colors.length >= 2) adventureColors = [colors[1]];
-					else if (colors.length === 1) adventureColors = [colors[0]]; // fallback
+					if (colors.length > 2) {
+						adventureColors = ['M'];
+					} else if (colors.length === 1) {
+						adventureColors = [colors[0]];
+					} else {
+						adventureColors = ['L'];
+					}
 				} else {
 					// For non-hybrid mana, extract all unique colors
-					adventureColors = [...new Set(manaText.split('').filter(char => ['W', 'U', 'B', 'R', 'G'].includes(char)))];
+					let colors = [...new Set(manaText.split('').filter(char => ['W', 'U', 'B', 'R', 'G'].includes(char)))];
+					if (colors.length > 2) {
+						adventureColors = ['M'];
+					} else {
+						adventureColors = colors;
+					}
 				}
 			}
-			
+
 			if (adventureColors.length === 1) {
 				// Single color adventure: use Rules (Left) with that color
 				let rulesLeft = config.makeFrameFunction(adventureColors[0], 'Rules (Left)', false, style);
@@ -1470,16 +1482,16 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 				if (rulesLeft) frames.push(rulesLeft);
 			}
 		}
-		
+
 		// OMEN SPECIAL HANDLING - Omen masks for omen side
 		if (frameType === 'Omen') {
-			// Detect omen cost colors from card.text.mana2 (omen mana cost)
+			// Detect omen cost colors from mana2Text (omen mana cost)
 			let omenColors = [];
 			let isHybridOmen = false;
-			if (card.text.mana2 && card.text.mana2.text) {
-				let manaText = card.text.mana2.text.toUpperCase();
+			if (mana2Text) {
+				let manaText = mana2Text.toUpperCase();
 				isHybridOmen = manaText.includes('/');
-				
+
 				// For hybrid mana (contains /), keep all detected colors from the hybrid symbols
 				if (manaText.includes('/')) {
 					let colors = manaText.split('').filter(char => ['W', 'U', 'B', 'R', 'G'].includes(char));
@@ -1489,12 +1501,12 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 					omenColors = [...new Set(manaText.split('').filter(char => ['W', 'U', 'B', 'R', 'G'].includes(char)))];
 				}
 			}
-			
+
 			// If no colors detected, default to artifact
 			if (omenColors.length === 0) {
 				omenColors = ['A'];
 			}
-			
+
 			// Add Omen mask(s) based on color count
 			if (omenColors.length === 1) {
 				// Single color omen: use Omen mask with that color
@@ -1512,7 +1524,7 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 
 				let omenRight = config.makeFrameFunction(omenColors[1], 'Omen (Right Half)', false, style);
 				if (omenRight) frames.push(omenRight);
-				
+
 				let omen = config.makeFrameFunction(omenColors[0], 'Omen', false, style);
 				if (omen) frames.push(omen);
 			}
@@ -1522,8 +1534,8 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 		if (frameType === 'Prepare') {
 			let prepareColors = [];
 			let isHybridPrepare = false;
-			if (card.text.mana2 && card.text.mana2.text) {
-				let manaText = card.text.mana2.text.toUpperCase();
+			if (mana2Text) {
+				let manaText = mana2Text.toUpperCase();
 				isHybridPrepare = manaText.includes('/');
 
 				if (manaText.includes('/')) {
@@ -1560,7 +1572,7 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 			let preparePinline = config.makeFrameFunction(prepareColors[0], 'Prepare Spell Pinline', false, style);
 			if (preparePinline) frames.push(preparePinline);
 		}
-		
+
 		if (properties.pinlineRight) {
 			frames.push(config.makeFrameFunction(properties.rulesRight, 'Rules', true, style));
 		}
@@ -1572,16 +1584,41 @@ async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) 
 		frames.push(config.makeFrameFunction(properties.frame, 'Border', false, style));
 	}
 
-	// ----------------------------------------------------------------
-	// SPECIAL HANDLING & FINALIZATION
-	// ----------------------------------------------------------------
-	
-	// Vehicle P/T text should be white for better visibility
+	return frames;
+}
+
+/**
+ * Builds a complete frame by layering multiple frame elements and applying them to the card
+ * @param {string} frameType - The frame type identifier
+ * @param {Array} colors - Array of color letters detected from the card
+ * @param {string} mana_cost - The mana cost string
+ * @param {string} type_line - The card type line
+ * @param {string} power - The power/toughness string
+ */
+async function autoFrameUnified(frameType, colors, mana_cost, type_line, power) {
+	const config = getFrameTypeConfig(frameType);
+	if (!config) {
+		console.error('Unknown frame type:', frameType);
+		return;
+	}
+
+	// Preserve existing extension frames and stamps that shouldn't be rebuilt
+	var preservedFrames = card.frames.filter(config.filterFrames);
+
+	// Compute new frame layers without touching the card
+	var mana2Text = card.text.mana2 ? card.text.mana2.text : '';
+	var newFrames = buildAutoFrames(frameType, colors, mana_cost, type_line, power, mana2Text);
+
+	// Vehicle P/T text should be white
 	if (card.text.pt && type_line.includes('Vehicle') && !card.text.pt.text.includes('fff')) {
 		card.text.pt.text = '{fontcolor#fff}' + card.text.pt.text;
 	}
 
+	card.frames = [];
+	document.querySelector('#frame-list').innerHTML = null;
+
 	// Apply the frames to the card (reverse order so they render bottom-to-top)
+	var frames = [...preservedFrames, ...newFrames];
 	card.frames = frames;
 	card.frames.reverse();
 	await card.frames.forEach(item => addFrame([], item));
