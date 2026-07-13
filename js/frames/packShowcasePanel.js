@@ -54,7 +54,7 @@ document.querySelector('#loadFrameVersion').onclick = async function() {
 		title: {name:'Title', text:'', x:110/2010, y:147/2814, width:0.8292, height:0.0543, oneLine:true, font:'MightyMouth', color:'white', size:0.0381},
 		type: {name:'Type', text:'', x:110/2010, y:1546/2814, width:0.8292, height:0.0543, oneLine:true, font:'MightyMouth', color:'white', size:0.0324},
 		rules: {name:'Rules Text', text:'', x:150/2010, y:1780/2814, width:1710/2010, height:800/2814, size:0.0275, font:'MightyMouth'},
-		pt: {name:'Power/Toughness', text:'', x:1626/2010, y:2534/2814, width:0.1367, height:0.0372, size:0.0372, font:'MightyMouth', oneLine:true, align:'center'}
+		pt: {name:'Power/Toughness', text:'', x:1626/2010, y:2534/2814, width:0.1367, height:0.0372, size:0.0372, font:'MightyMouth', color:'white', oneLine:true, align:'center'}
 	});
 }
 //loads available frames
