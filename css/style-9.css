@@ -274,6 +274,11 @@
 	src: url('../fonts/Comic Sans MS.ttf') format("truetype");
 }
 
+@font-face {
+	font-family: MightyMouth;
+	src: url('../fonts/MightyMouth.otf') format('opentype');
+}
+
 /*Variables*/
 :root {
 	--site-background: url('../img/lowpolyBackground.svg');
