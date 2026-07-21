@@ -211,7 +211,7 @@ async function resetCardIrregularities({ canvas = [getStandardWidth(), getStanda
 	card.bottomInfoTranslate = { x: 0, y: 0 };
 	card.bottomInfoRotate = 0;
 	card.bottomInfoZoom = 1;
-	card.bottomInfoColor = 'white';
+	card.bottomInfoColor = (document.querySelector('#whiteCollectorInfoColor') && !document.querySelector('#whiteCollectorInfoColor').checked) ? 'black' : 'white';
 	replacementMasks = {};
 	//rotation
 	if (card.landscape) {
@@ -2860,6 +2860,22 @@ function getSetSymbolWatermark(url, targetImage = watermark) {
 //Bottom Info Tab
 async function loadBottomInfo(textObjects = []) {
 	await bottomInfoContext.clearRect(0, 0, bottomInfoCanvas.width, bottomInfoCanvas.height);
+	
+	var isWhite = true;
+	var toggle = document.querySelector('#whiteCollectorInfoColor');
+	if (toggle) {
+		isWhite = toggle.checked;
+	}
+	var newColor = isWhite ? 'white' : 'black';
+	var newOutline = isWhite ? 'black' : 'white';
+	
+	if (textObjects) {
+		for (var key of Object.keys(textObjects)) {
+			textObjects[key].color = newColor;
+			textObjects[key].outlineColor = newOutline;
+		}
+	}
+	
 	card.bottomInfo = null;
 	card.bottomInfo = textObjects;
 	await bottomInfoEdited();
@@ -2936,6 +2952,22 @@ function enableNewCollectorInfoStyle() {
 function enableCollectorInfo() {
 	localStorage.setItem('enableCollectorInfo', document.querySelector('#enableCollectorInfo').checked);
 	bottomInfoEdited();
+}
+function toggleCollectorInfoColor() {
+	var toggle = document.querySelector('#whiteCollectorInfoColor');
+	if (toggle) {
+		localStorage.setItem('whiteCollectorInfoColor', toggle.checked);
+		var isWhite = toggle.checked;
+		card.bottomInfoColor = isWhite ? 'white' : 'black';
+		
+		if (card.bottomInfo) {
+			for (var key of Object.keys(card.bottomInfo)) {
+				card.bottomInfo[key].color = card.bottomInfoColor;
+				card.bottomInfo[key].outlineColor = isWhite ? 'black' : 'white';
+			}
+		}
+		bottomInfoEdited();
+	}
 }
 function enableImportCollectorInfo() {
 	localStorage.setItem('enableImportCollectorInfo', document.querySelector('#enableImportCollectorInfo').checked);
@@ -5019,6 +5051,13 @@ if (!localStorage.getItem('enableCollectorInfo')) {
 	localStorage.setItem('enableCollectorInfo', 'true');
 } else {
 	document.querySelector('#enableCollectorInfo').checked = (localStorage.getItem('enableCollectorInfo') == 'true');
+}
+if (!localStorage.getItem('whiteCollectorInfoColor')) {
+	localStorage.setItem('whiteCollectorInfoColor', 'true');
+} else {
+	if (document.querySelector('#whiteCollectorInfoColor')) {
+		document.querySelector('#whiteCollectorInfoColor').checked = (localStorage.getItem('whiteCollectorInfoColor') == 'true');
+	}
 }
 if (!localStorage.getItem('autoFrame')) {
 	localStorage.setItem('autoFrame', 'false');
