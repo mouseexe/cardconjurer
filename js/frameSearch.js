@@ -1,4 +1,4 @@
-const frameNames = new Map ([
+const frameNames = new Map([
 	//standard
 	['Regular Frames', 'M15Regular-1'],
 	['Enchantment Frames (Nyx)', 'M15Nyx'],
@@ -152,6 +152,7 @@ const frameNames = new Map ([
 	['Planeswalker MDFC', 'PlaneswalkerMDFC'],
 	['Planeswalker Transform (Front)', 'PlaneswalkerTransformFront'],
 	['Planeswalker Transform (Back)', 'PlaneswalkerTransformBack'],
+	['Planeswalker Transform (Old Back)', 'PlaneswalkerTransformOldBack'],
 	['Double Feature Planeswalker Transform (Front)', 'PlaneswalkerTransformFrontDBL'],
 	['Double Feature Planeswalker Transform (Back)', 'PlaneswalkerTransformBackDBL'],
 	['Planeswalker Transform Icons', 'PlaneswalkerTransformIcons'],
@@ -317,10 +318,10 @@ autocomplete(document.getElementById("frameSearch"), Array.from(frameNames.keys(
 
 function autocomplete(inp, arr) {
 	var currentFocus;
-	inp.addEventListener("input", function(e) {
+	inp.addEventListener("input", function (e) {
 		var a, b, i, val = this.value;
 		closeAllLists();
-		if (!val) { return false;}
+		if (!val) { return false; }
 		currentFocus = -1;
 		a = document.createElement("DIV");
 		a.setAttribute("id", this.id + "autocomplete-list");
@@ -331,32 +332,32 @@ function autocomplete(inp, arr) {
 				b = document.createElement("DIV");
 				b.setAttribute("class", "input")
 				b.innerHTML = arr[i];
-				b.addEventListener("click", function(e) {
+				b.addEventListener("click", function (e) {
 					inp.value = this.textContent;
 					frameSearch(inp.value);
-              		closeAllLists();
-          		});
+					closeAllLists();
+				});
 				a.appendChild(b);
 			}
 		}
 	});
-	inp.addEventListener("keydown", function(e) {
+	inp.addEventListener("keydown", function (e) {
 		var x = document.getElementById(this.id + "autocomplete-list");
 		if (x) x = x.getElementsByTagName("div");
 		if (e.keyCode == 40) {
-        	currentFocus++;
-        	addActive(x);
-      	} else if (e.keyCode == 38) {
-        	currentFocus--;
-        	addActive(x);
-    	} else if (e.keyCode == 13) {
-    		e.preventDefault();
-    		if (currentFocus > -1) {
-    			if (x) x[currentFocus].click();
-    		}
-    	} else if (e.keyCode == 27) {
-    		closeAllLists();
-    	}
+			currentFocus++;
+			addActive(x);
+		} else if (e.keyCode == 38) {
+			currentFocus--;
+			addActive(x);
+		} else if (e.keyCode == 13) {
+			e.preventDefault();
+			if (currentFocus > -1) {
+				if (x) x[currentFocus].click();
+			}
+		} else if (e.keyCode == 27) {
+			closeAllLists();
+		}
 	});
 	function addActive(x) {
 		if (!x) return false;
@@ -371,12 +372,12 @@ function autocomplete(inp, arr) {
 		}
 	}
 	function closeAllLists(elmnt) {
-    	var x = document.getElementsByClassName("autocomplete-items");
-    	for (var i = 0; i < x.length; i++) {
-    		if (elmnt != x[i] && elmnt != inp) {
-    			x[i].parentNode.removeChild(x[i]);
-    		}
-	    }
+		var x = document.getElementsByClassName("autocomplete-items");
+		for (var i = 0; i < x.length; i++) {
+			if (elmnt != x[i] && elmnt != inp) {
+				x[i].parentNode.removeChild(x[i]);
+			}
+		}
 	}
 	document.addEventListener("click", function (e) {
 		closeAllLists(e.target);
