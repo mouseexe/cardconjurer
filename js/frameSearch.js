@@ -335,8 +335,8 @@ function autocomplete(inp, arr) {
 				b.addEventListener("click", function(e) {
 					inp.value = this.textContent;
 					frameSearch(inp.value);
-					closeAllLists();
-				});
+              		closeAllLists();
+          		});
 				a.appendChild(b);
 			}
 		}
@@ -345,19 +345,19 @@ function autocomplete(inp, arr) {
 		var x = document.getElementById(this.id + "autocomplete-list");
 		if (x) x = x.getElementsByTagName("div");
 		if (e.keyCode == 40) {
-			currentFocus++;
-			addActive(x);
-		} else if (e.keyCode == 38) {
-			currentFocus--;
-			addActive(x);
-		} else if (e.keyCode == 13) {
-			e.preventDefault();
-			if (currentFocus > -1) {
-				if (x) x[currentFocus].click();
-			}
-		} else if (e.keyCode == 27) {
-			closeAllLists();
-		}
+        	currentFocus++;
+        	addActive(x);
+      	} else if (e.keyCode == 38) {
+        	currentFocus--;
+        	addActive(x);
+    	} else if (e.keyCode == 13) {
+    		e.preventDefault();
+    		if (currentFocus > -1) {
+    			if (x) x[currentFocus].click();
+    		}
+    	} else if (e.keyCode == 27) {
+    		closeAllLists();
+    	}
 	});
 	function addActive(x) {
 		if (!x) return false;
@@ -372,12 +372,12 @@ function autocomplete(inp, arr) {
 		}
 	}
 	function closeAllLists(elmnt) {
-		var x = document.getElementsByClassName("autocomplete-items");
-		for (var i = 0; i < x.length; i++) {
-			if (elmnt != x[i] && elmnt != inp) {
-				x[i].parentNode.removeChild(x[i]);
-			}
-		}
+    	var x = document.getElementsByClassName("autocomplete-items");
+    	for (var i = 0; i < x.length; i++) {
+    		if (elmnt != x[i] && elmnt != inp) {
+    			x[i].parentNode.removeChild(x[i]);
+    		}
+	    }
 	}
 	document.addEventListener("click", function (e) {
 		closeAllLists(e.target);
