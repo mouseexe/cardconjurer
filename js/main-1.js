@@ -120,7 +120,21 @@ function bindInputs(query1, query2, checkbox = false) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-	document.body.dispatchEvent(new Event('doCreate'));
+	if (typeof htmx !== 'undefined') {
+		htmx.onLoad(function() {
+			if (!window.initialNavigationFired) {
+				window.initialNavigationFired = true;
+				document.body.dispatchEvent(new Event('doCreate'));
+			}
+		});
+	} else {
+		setTimeout(function() {
+			if (!window.initialNavigationFired) {
+				window.initialNavigationFired = true;
+				document.body.dispatchEvent(new Event('doCreate'));
+			}
+		}, 300);
+	}
 })
 
 document.onkeyup = function(e) {
