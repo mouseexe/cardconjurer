@@ -4836,21 +4836,15 @@ async function uploadSavedCards(event) {
 		return;
 	}
 
-	reader.onload = async function () {
-		const cardsToUpload = JSON.parse(reader.result);
-		for (const item of cardsToUpload) {
-			await saveCard(item);
-		}
-		notify(`Successfully imported ${cardsToUpload.length} cards.`);
-	}
-	
 	// Otherwise, treat as text file (traditional .cardconjurer format)
-	reader.onload = function () {
+	reader.onload = async function () {
 		try {
 			const parsedData = JSON.parse(reader.result);
 			if (Array.isArray(parsedData)) {
-				parsedData.forEach(item => saveCard(item));
-				notify('Cards imported successfully!', 3);
+				for (const item of parsedData) {
+					await saveCard(item);
+				}
+				notify(`Successfully imported ${parsedData.length} cards.`, 3);
 			} else {
 				notify('Invalid file format. Expected an array of cards.', 5);
 			}
