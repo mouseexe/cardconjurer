@@ -225,6 +225,30 @@ function getFrameTypeConfig(frameType) {
 			supportsStamp: true,
 			filterFrames: (frame) => frame.name.includes('Extension')
 		},
+
+		// Transform (Front) frame
+		'TransformFront': {
+			group: 'Alternative Layouts',
+			makeFrameFunction: (letter, mask, maskToRightHalf, style) => {
+				return makeFrameByLetterUnified('TransformFront', letter, mask, maskToRightHalf, style);
+			},
+			supportsCrown: true,
+			supportsPT: true,
+			supportsStamp: false,
+			filterFrames: (frame) => frame.name.includes('Extension')
+		},
+
+		// Transform (Back) frame
+		'TransformBack': {
+			group: 'Alternative Layouts',
+			makeFrameFunction: (letter, mask, maskToRightHalf, style) => {
+				return makeFrameByLetterUnified('TransformBack', letter, mask, maskToRightHalf, style);
+			},
+			supportsCrown: true,
+			supportsPT: true,
+			supportsStamp: false,
+			filterFrames: (frame) => frame.name.includes('Extension')
+		},
 		
 		// Adventure frame
 		'Adventure': {
@@ -801,6 +825,74 @@ function getFrameLetterConfig(frameType) {
 				return letter;
 			}
 		},
+		'TransformFront': {
+			frameNames: standardFrameNames,
+			basePath: '/img/frames/m15/',
+			bounds: {
+				crownBorderCover: {height: 0.0177, width: 0.9214, x: 0.0394, y: 0.0277},
+				crown: {height: 0.1667, width: 0.9454, x: 0.0274, y: 0.0191},
+				innerCrown: {height: 0.0239, width: 0.672, x: 0.164, y: 0.0239},
+				pt: {height: 0.0733, width: 0.188, x: 0.7573, y: 0.8848}
+			},
+			pathBuilder: (letter, mask, style) => {
+				if (mask === 'Crown') return `transform/crowns/regular/${letter.toLowerCase()}.png`;
+				if (mask === 'Inner Crown') return `innerCrowns/m15InnerCrown${letter}${style}.png`; // fallback to regular
+				if (mask === 'PT') return `regular/m15PT${letter}.png`; // packM15TransformFront uses regular PT
+
+				// Main frame
+				return `transform/${style.toLowerCase()}/front${letter}.png`;
+			},
+			maskPath: (mask) => {
+				if (mask === 'Pinline') return 'transform/regular/maskPinlineFront.png';
+				if (mask === 'Title') return 'transform/regular/maskTitle.png';
+				if (mask === 'Rules') return 'transform/regular/maskRulesFront.png';
+				if (mask === 'Frame') return 'transform/regular/maskFrameFront.png';
+				if (mask === 'Border') return 'transform/regular/maskBorderFront.png';
+				return `regular/m15Mask${mask}.png`; // fallback for Type etc
+			},
+			letterTransform: (letter, mask, style) => {
+				if ((mask === 'Crown' || mask === 'Inner Crown') && letter.includes('L') && letter.length > 1) {
+					return letter[0];
+				}
+				if (letter === 'L' && style === 'Nyx') {
+					return {letter, style: 'regular'};
+				}
+				return letter;
+			}
+		},
+		'TransformBack': {
+			frameNames: standardFrameNames,
+			basePath: '/img/frames/m15/',
+			bounds: {
+				crownBorderCover: {height: 0.0177, width: 0.9214, x: 0.0394, y: 0.0277},
+				crown: {height: 0.1667, width: 0.9454, x: 0.0274, y: 0.0191},
+				innerCrown: {height: 0.0239, width: 0.672, x: 0.164, y: 0.0239},
+				pt: {height: 0.0733, width: 0.188, x: 0.7573, y: 0.8848}
+			},
+			pathBuilder: (letter, mask, style) => {
+				if (mask === 'Crown') return `transform/crowns/regular/new/${letter.toLowerCase()}.png`;
+				if (mask === 'Inner Crown') return `innerCrowns/m15InnerCrown${letter}${style}.png`; // fallback to regular
+				if (mask === 'PT') return `transform/regular/pt${letter}.png`;
+
+				// Main frame
+				return `transform/${style.toLowerCase()}/new/back${letter}.png`;
+			},
+			maskPath: (mask) => {
+				if (mask === 'Pinline') return 'transform/regular/new/maskPinlineBack.png';
+				if (mask === 'Title') return 'transform/regular/new/maskTitle.png';
+				if (mask === 'Frame') return 'transform/regular/new/maskFrameBack.png';
+				return `regular/m15Mask${mask}.png`; // fallback for Type, Rules, Border
+			},
+			letterTransform: (letter, mask, style) => {
+				if ((mask === 'Crown' || mask === 'Inner Crown') && letter.includes('L') && letter.length > 1) {
+					return letter[0];
+				}
+				if (letter === 'L' && style === 'Nyx') {
+					return {letter, style: 'regular'};
+				}
+				return letter;
+			}
+		},
 		'Adventure': {
 			frameNames: standardFrameNames,
 			basePath: '/img/frames/adventure/',
@@ -939,6 +1031,7 @@ function getFrameLetterConfig(frameType) {
 				return letter;
 			}
 		}
+		
 	};
 
 	return configs[frameType];
@@ -1734,7 +1827,10 @@ function autoFrame() {
 		
 		// Load the appropriate frame pack script if not already loaded
 		// BorderlessUB uses the Borderless pack
-		var packFrame = (frame == 'BorderlessUB') ? 'Borderless' : frame;
+		var packFrame = frame;
+		if (frame === 'BorderlessUB') packFrame = 'Borderless';
+		if (frame === 'TransformFront') packFrame = 'M15TransformFront';
+		if (frame === 'TransformBack') packFrame = 'M15TransformBackNew';
 		
 		if (autoFramePack != packFrame) {
 			loadScript('/js/frames/pack' + packFrame + '.js');
