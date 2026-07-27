@@ -968,9 +968,11 @@ function getFrameLetterConfig(frameType) {
 				pt: {height: 0.0733, width: 0.188, x: 0.7573, y: 0.8848}
 			},
 			pathBuilder: (letter, mask, style) => {
-				if (mask === 'Crown') return `m15/crowns/m15Crown${letter}.png`;
+				if (mask === 'Crown') return `modal/crowns/regular/${letter.toLowerCase()}.png`;
 				if (mask === 'Inner Crown') return `m15/innerCrowns/m15InnerCrown${letter}${style}.png`;
 				if (mask === 'PT') return `m15/regular/m15PT${letter}.png`;
+
+				if (style === 'Nyx' && mask === 'Frame') return `m15/transform/nyx/front${letter}.png`;
 
 				// Main frame
 				return `modal/regular/${letter.toLowerCase()}.png`;
@@ -1013,9 +1015,11 @@ function getFrameLetterConfig(frameType) {
 				pt: {height: 0.0733, width: 0.188, x: 0.7573, y: 0.8848}
 			},
 			pathBuilder: (letter, mask, style) => {
-				if (mask === 'Crown') return `m15/crowns/m15Crown${letter}.png`;
+				if (mask === 'Crown') return `modal/crowns/regular/${letter.toLowerCase()}.png`;
 				if (mask === 'Inner Crown') return `m15/innerCrowns/m15InnerCrown${letter}${style}.png`;
 				if (mask === 'PT') return `m15/transform/regular/pt${letter}.png`;
+
+				if (style === 'Nyx' && mask === 'Frame') return `m15/transform/nyx/back${letter}.png`;
 
 				// Main frame
 				return `modal/regular/back/${letter.toLowerCase()}.png`;
@@ -1235,6 +1239,14 @@ function makeFrameByLetterUnified(frameType, letter, mask = false, maskToRightHa
 	
 	// Crown Border Cover: Black layer that covers the border under legendary crowns
 	if (mask === "Crown Border Cover") {
+		if (frameType === 'ModalFront' || frameType === 'ModalBack') {
+			return {
+				'name': 'Legend Crown Border Cover',
+				'src': '/img/frames/modal/crowns/regular/cover.svg',
+				'masks': [],
+				'bounds': {x: 0, y: 0, width: 1, height: 1}
+			};
+		}
 		return {
 			'name': 'Legend Crown Border Cover',
 			'src': '/img/black.png',
@@ -1343,6 +1355,21 @@ function makeFrameByLetterUnified(frameType, letter, mask = false, maskToRightHa
 		return frame;
 	}
 
+	if (mask === 'Nyx Kitbash Right') {
+		let frame = {
+			'name': frameName + ' Nyx Frame',
+			'src': config.basePath + `m15/nyx/m15Frame${letter}Nyx.png`,
+			'masks': [{
+				'src': config.basePath + config.maskPath('Frame', style, extraParam),
+				'name': 'Frame'
+			}]
+		};
+		if (maskToRightHalf) {
+			frame.masks.push({'src': '/img/frames/maskRightHalf.png', 'name': 'Right Half'});
+		}
+		return frame;
+	}
+
 	// Power/Toughness Box: The P/T box for creatures
 	if (mask === 'PT') {
 		return {
@@ -1372,10 +1399,10 @@ function makeFrameByLetterUnified(frameType, letter, mask = false, maskToRightHa
 	// ----------------------------------------------------------------
 	// MAIN FRAME CONSTRUCTION
 	// ----------------------------------------------------------------
-	// Build the main frame object (doesn't pass mask for path, only applies mask layer)
+	// Build the main frame object (passes mask so pathBuilder can differentiate layers)
 	var frame = {
 		'name': frameName + ' Frame',
-		'src': config.basePath + config.pathBuilder(letter, false, style, extraParam)
+		'src': config.basePath + config.pathBuilder(letter, mask, style, extraParam)
 	};
 
 	// Apply masks to the frame (Title, Type, Rules, Frame, Border, Pinline, etc.)
@@ -1849,6 +1876,13 @@ function buildAutoFrames(frameType, colors, mana_cost, type_line, power, mana2Te
 			
 			let arrowFrame = config.makeFrameFunction(properties.frame, 'MDFC Arrow', false, style);
 			if (arrowFrame) frames.push(arrowFrame);
+			
+			// Nyx Kitbash Right
+			if (style === 'Nyx') {
+				let rightColor = properties.frameRight ? properties.frameRight : properties.frame;
+				let nyxRight = config.makeFrameFunction(rightColor, 'Nyx Kitbash Right', true, style);
+				if (nyxRight) frames.push(nyxRight);
+			}
 		}
 
 		if (properties.pinlineRight) {
