@@ -250,6 +250,30 @@ function getFrameTypeConfig(frameType) {
 			filterFrames: (frame) => frame.name.includes('Extension')
 		},
 		
+		// Modal DFC (Front) frame
+		'ModalFront': {
+			group: 'Alternative Layouts',
+			makeFrameFunction: (letter, mask, maskToRightHalf, style) => {
+				return makeFrameByLetterUnified('ModalFront', letter, mask, maskToRightHalf, style);
+			},
+			supportsCrown: true,
+			supportsPT: true,
+			supportsStamp: false,
+			filterFrames: (frame) => frame.name.includes('Extension')
+		},
+
+		// Modal DFC (Back) frame
+		'ModalBack': {
+			group: 'Alternative Layouts',
+			makeFrameFunction: (letter, mask, maskToRightHalf, style) => {
+				return makeFrameByLetterUnified('ModalBack', letter, mask, maskToRightHalf, style);
+			},
+			supportsCrown: true,
+			supportsPT: true,
+			supportsStamp: false,
+			filterFrames: (frame) => frame.name.includes('Extension')
+		},
+		
 		// Adventure frame
 		'Adventure': {
 			group: 'Showcase-5',
@@ -885,6 +909,133 @@ function getFrameLetterConfig(frameType) {
 			},
 			letterTransform: (letter, mask, style) => {
 				if ((mask === 'Crown' || mask === 'Inner Crown') && letter.includes('L') && letter.length > 1) {
+					return letter[0];
+				}
+				if (letter === 'L' && style === 'Nyx') {
+					return {letter, style: 'regular'};
+				}
+				return letter;
+			}
+		},
+		'ModalFront': {
+			frameNames: standardFrameNames,
+			basePath: '/img/frames/',
+			bounds: {
+				crownBorderCover: {height: 0.0177, width: 0.9214, x: 0.0394, y: 0.0277},
+				crown: {height: 0.1667, width: 0.9454, x: 0.0274, y: 0.0191},
+				innerCrown: {height: 0.0239, width: 0.672, x: 0.164, y: 0.0239},
+				pt: {height: 0.0733, width: 0.188, x: 0.7573, y: 0.8848}
+			},
+			pathBuilder: (letter, mask, style) => {
+				if (mask === 'Crown') return `m15/crowns/m15Crown${letter}.png`;
+				if (mask === 'Inner Crown') return `m15/innerCrowns/m15InnerCrown${letter}${style}.png`;
+				if (mask === 'PT') return `m15/regular/m15PT${letter}.png`;
+
+				// Main frame
+				return `modal/regular/${letter.toLowerCase()}.png`;
+			},
+			maskPath: (mask) => {
+				if (mask === 'Pinline') return 'modal/regular/pinline.svg';
+				if (mask === 'Title') return 'modal/regular/title.svg';
+				if (mask === 'Rules') return 'modal/regular/textbox.svg';
+				if (mask === 'Frame') return 'modal/regular/frame.svg';
+				if (mask === 'Border') return 'modal/regular/border.svg';
+				if (mask === 'Flipside') return 'modal/regular/reminder.svg';
+				if (mask === 'MDFC Arrow') return 'modal/titleMDFCArrow.svg';
+				return `m15/regular/m15Mask${mask}.png`; // fallback
+			},
+			letterTransform: (letter, mask, style) => {
+				if ((mask === 'Crown' || mask === 'Inner Crown') && letter.includes('L') && letter.length > 1) {
+					return letter[0];
+				}
+				// PT boxes don't have land variants like WL
+				if (mask === 'PT' && letter.includes('L') && letter.length > 1) {
+					return letter[0];
+				}
+				if (letter === 'L' && style === 'Nyx') {
+					return {letter, style: 'regular'};
+				}
+				return letter;
+			}
+		},
+		'ModalFront': {
+			frameNames: standardFrameNames,
+			basePath: '/img/frames/',
+			bounds: {
+				crownBorderCover: {height: 0.0177, width: 0.9214, x: 0.0394, y: 0.0277},
+				crown: {height: 0.1667, width: 0.9454, x: 0.0274, y: 0.0191},
+				innerCrown: {height: 0.0239, width: 0.672, x: 0.164, y: 0.0239},
+				pt: {height: 0.0733, width: 0.188, x: 0.7573, y: 0.8848}
+			},
+			pathBuilder: (letter, mask, style) => {
+				if (mask === 'Crown') return `m15/crowns/m15Crown${letter}.png`;
+				if (mask === 'Inner Crown') return `m15/innerCrowns/m15InnerCrown${letter}${style}.png`;
+				if (mask === 'PT') return `m15/regular/m15PT${letter}.png`;
+
+				// Main frame
+				return `modal/regular/${letter.toLowerCase()}.png`;
+			},
+			maskPath: (mask) => {
+				if (mask === 'Pinline') return 'modal/regular/pinline.svg';
+				if (mask === 'Title') return 'modal/regular/title.svg';
+				if (mask === 'Rules') return 'modal/regular/textbox.svg';
+				if (mask === 'Frame') return 'modal/regular/frame.svg';
+				if (mask === 'Border') return 'modal/regular/border.svg';
+				if (mask === 'Flipside') return 'modal/regular/reminder.svg';
+				if (mask === 'MDFC Arrow') return 'modal/titleMDFCArrow.svg';
+				return `m15/regular/m15Mask${mask}.png`; // fallback
+			},
+			letterTransform: (letter, mask, style) => {
+				if ((mask === 'Crown' || mask === 'Inner Crown') && letter.includes('L') && letter.length > 1) {
+					return letter[0];
+				}
+				// PT boxes don't have land variants like WL
+				if (mask === 'PT' && letter.includes('L') && letter.length > 1) {
+					return letter[0];
+				}
+				if (letter === 'L' && style === 'Nyx') {
+					return {letter, style: 'regular'};
+				}
+				return letter;
+			}
+		},
+		'ModalBack': {
+			frameNames: (function() {
+				let names = {};
+				for (let k in standardFrameNames) names[k] = standardFrameNames[k] + ' (Back)';
+				return names;
+			})(),
+			basePath: '/img/frames/',
+			bounds: {
+				crownBorderCover: {height: 0.0177, width: 0.9214, x: 0.0394, y: 0.0277},
+				crown: {height: 0.1667, width: 0.9454, x: 0.0274, y: 0.0191},
+				innerCrown: {height: 0.0239, width: 0.672, x: 0.164, y: 0.0239},
+				pt: {height: 0.0733, width: 0.188, x: 0.7573, y: 0.8848}
+			},
+			pathBuilder: (letter, mask, style) => {
+				if (mask === 'Crown') return `m15/crowns/m15Crown${letter}.png`;
+				if (mask === 'Inner Crown') return `m15/innerCrowns/m15InnerCrown${letter}${style}.png`;
+				if (mask === 'PT') return `m15/transform/regular/pt${letter}.png`;
+
+				// Main frame
+				return `modal/regular/back/${letter.toLowerCase()}.png`;
+			},
+			maskPath: (mask) => {
+				if (mask === 'Pinline') return 'modal/regular/pinline.svg';
+				if (mask === 'Title') return 'modal/regular/title.svg';
+				if (mask === 'Rules') return 'modal/regular/textbox.svg';
+				if (mask === 'Frame') return 'modal/regular/frame.svg';
+				if (mask === 'Border') return 'modal/regular/border.svg';
+				if (mask === 'Flipside') return 'modal/regular/reminder.svg';
+				if (mask === 'MDFC Arrow') return 'modal/titleMDFCArrow.svg';
+				return `m15/regular/m15Mask${mask}.png`; // fallback
+			},
+			letterTransform: (letter, mask, style) => {
+				if ((mask === 'Crown' || mask === 'Inner Crown') && letter.includes('L') && letter.length > 1) {
+					return letter[0];
+				}
+				// PT boxes don't have land variants like WL
+				if (mask === 'PT' && letter.includes('L') && letter.length > 1) {
 					return letter[0];
 				}
 				if (letter === 'L' && style === 'Nyx') {
@@ -1666,6 +1817,40 @@ function buildAutoFrames(frameType, colors, mana_cost, type_line, power, mana2Te
 			if (preparePinline) frames.push(preparePinline);
 		}
 
+		// MODAL SPECIAL HANDLING - Flipside mask for Modal DFCs
+		if (frameType === 'ModalFront' || frameType === 'ModalBack') {
+			let flipsideText = card.text.flipSideReminder ? card.text.flipSideReminder.text.toUpperCase() : '';
+			let flipsideType = card.text.flipsideType ? card.text.flipsideType.text.toUpperCase() : '';
+
+			let isLand = flipsideType.includes('LAND');
+			let colors = [...new Set(flipsideText.split('').filter(char => ['W', 'U', 'B', 'R', 'G'].includes(char)))];
+
+			let coloredSymbols = flipsideText.match(/\{[^}]*[WUBRG][^}]*\}/g) || [];
+			let hasNonHybridColored = coloredSymbols.some(s => !s.includes('/'));
+			let isHybridOnly = coloredSymbols.length > 0 && !hasNonHybridColored;
+
+			let flipsideLetter = 'C';
+			if (isLand || isHybridOnly) {
+				if (colors.length === 1) {
+					flipsideLetter = colors[0] + 'L';
+				} else {
+					flipsideLetter = 'L';
+				}
+			} else {
+				if (colors.length === 1) {
+					flipsideLetter = colors[0];
+				} else if (colors.length > 1) {
+					flipsideLetter = 'M';
+				}
+			}
+
+			let flipsideFrame = config.makeFrameFunction(flipsideLetter, 'Flipside', false, style);
+			if (flipsideFrame) frames.push(flipsideFrame);
+			
+			let arrowFrame = config.makeFrameFunction(properties.frame, 'MDFC Arrow', false, style);
+			if (arrowFrame) frames.push(arrowFrame);
+		}
+
 		if (properties.pinlineRight) {
 			frames.push(config.makeFrameFunction(properties.rulesRight, 'Rules', true, style));
 		}
@@ -1831,6 +2016,7 @@ function autoFrame() {
 		if (frame === 'BorderlessUB') packFrame = 'Borderless';
 		if (frame === 'TransformFront') packFrame = 'M15TransformFront';
 		if (frame === 'TransformBack') packFrame = 'M15TransformBackNew';
+		if (frame === 'ModalFront' || frame === 'ModalBack') packFrame = 'ModalRegular';
 		
 		if (autoFramePack != packFrame) {
 			loadScript('/js/frames/pack' + packFrame + '.js');
