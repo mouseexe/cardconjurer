@@ -2858,6 +2858,9 @@ function lockSetSymbolURL() {
 	}
 	localStorage.setItem('lockSetSymbolURL', savedValue);
 }
+function lockDateStamp() {
+	localStorage.setItem('lockDateStamp', document.querySelector('#lockDateStamp').checked);
+}
 //WATERMARK TAB
 function uploadWatermark(imageSource, otherParams) {
 	ImageLoadTracker.track(imageSource);
@@ -4001,8 +4004,12 @@ function changeCardIndex() {
 	// Clear all existing text fields to prevent old data from persisting BUT preserve Multi Face reminder text if we're using a Multi Face frame
 	var savedFuseReminderText = '';
 	var savedDescriptiveTexts = {};
+	var savedDateStampText = '';
 	if (card.text && card.text.reminder && card.version === 'fuse' || card.version === 'room') {
 		savedFuseReminderText = card.text.reminder.text;
+	}
+	if (card.text && card.text.dateStamp && document.querySelector('#lockDateStamp') && document.querySelector('#lockDateStamp').checked) {
+		savedDateStampText = card.text.dateStamp.text;
 	}
 	// Save descriptive texts for vanguard
 	if (card.text) {
@@ -4025,6 +4032,11 @@ function changeCardIndex() {
 				card.text[field].text = savedDescriptiveTexts[field];
 			}
 		});
+
+		// Restore date stamp text
+		if (savedDateStampText && card.text.dateStamp) {
+			card.text.dateStamp.text = savedDateStampText;
+		}
 	}
 
 	// Update reminder text from imported card if available
@@ -5404,6 +5416,14 @@ if (!localStorage.getItem('lockSetSymbolURL')) {
 document.querySelector('#lockSetSymbolURL').checked = '' != localStorage.getItem('lockSetSymbolURL');
 if (document.querySelector('#lockSetSymbolURL').checked) {
 	setSymbol.src = localStorage.getItem('lockSetSymbolURL');
+}
+
+// lock date stamp
+if (!localStorage.getItem('lockDateStamp')) {
+	localStorage.setItem('lockDateStamp', 'false');
+}
+if (document.querySelector('#lockDateStamp')) {
+	document.querySelector('#lockDateStamp').checked = localStorage.getItem('lockDateStamp') === 'true';
 }
 
 //bind inputs together
