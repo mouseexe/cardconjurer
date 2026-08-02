@@ -32,7 +32,7 @@ document.querySelector('#loadFrameVersion').onclick = async function() {
 	card.artBounds = {x:0.068, y:0.101, width:0.864, height:0.8143};
 	autoFitArt();
 	//set symbol bounds
-	card.setSymbolBounds = {x:0.9227, y:0.5891, width:0.12, height:0.0381, vertical:'center', horizontal: 'right'};
+	card.setSymbolBounds = {x:0.9227, y:0.5234, width:0.12, height:0.0381, vertical:'center', horizontal: 'right'};
 	resetSetSymbol();
 	//watermark bounds
 	card.watermarkBounds = {x:0.5, y:0.7762, width:0.75, height:0.2305};
