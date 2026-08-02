@@ -122,7 +122,13 @@ window.FontLoadTracker = {
 	 */
 	track: function (fontFamily) {
 		if (this.isTracking && fontFamily) {
-			this.fonts.add(fontFamily);
+			try {
+				if (!document.fonts.check(`12px "${fontFamily}"`)) {
+					this.fonts.add(fontFamily);
+				}
+			} catch (e) {
+				this.fonts.add(fontFamily);
+			}
 		}
 	},
 
@@ -138,7 +144,11 @@ window.FontLoadTracker = {
 		// The document.fonts.load() method checks if a font is ready for use.
 		// It requires a size (e.g., '12px'), but the family name is the crucial part.
 		for (const font of this.fonts) {
-			fontPromises.push(document.fonts.load(`12px ${font}`));
+			try {
+				fontPromises.push(document.fonts.load(`12px "${font}"`));
+			} catch (e) {
+				console.warn('FontLoadTracker: invalid font or could not load:', font, e);
+			}
 		}
 		console.log('Waiting for fonts to load:', Array.from(this.fonts));
 		return Promise.all(fontPromises);
@@ -1293,6 +1303,8 @@ function autoFrameBuffer() {
 	autoFrameTimer = setTimeout(autoFrame, 500);
 }
 async function drawText() {
+	FontLoadTracker.start();
+
 	window.actualManaLeftEdge = undefined;
 	textContext.clearRect(0, 0, textCanvas.width, textCanvas.height);
 	prePTContext.clearRect(0, 0, prePTCanvas.width, prePTCanvas.height);
@@ -1301,6 +1313,31 @@ async function drawText() {
 		await writeText(textObject[1], textContext);
 		continue;
 	}
+
+	if (document.querySelector('#enableCollectorInfo') && document.querySelector('#enableCollectorInfo').checked && card.bottomInfo) {
+		for (var textObject of Object.entries(card.bottomInfo)) {
+			if (!["NOT FOR SALE", "Wizards of the Coast", "CardConjurer.com", "cardconjurer.com"].some(v => textObject[1].text.includes(v))) {
+				FontLoadTracker.track(textObject[1].font || 'mplantin');
+			}
+		}
+	}
+
+	if (FontLoadTracker.fonts.size > 0) {
+		await FontLoadTracker.waitForAll();
+		// Redraw with loaded fonts
+		textContext.clearRect(0, 0, textCanvas.width, textCanvas.height);
+		prePTContext.clearRect(0, 0, prePTCanvas.width, prePTCanvas.height);
+		drawTextBetweenFrames = false;
+		for (var textObject of Object.entries(card.text)) {
+			await writeText(textObject[1], textContext);
+			continue;
+		}
+		if (document.querySelector('#enableCollectorInfo') && document.querySelector('#enableCollectorInfo').checked) {
+			await bottomInfoEdited();
+		}
+	}
+	FontLoadTracker.stop();
+
 	if (drawTextBetweenFrames || redrawFrames) {
 		drawFrames();
 		if (!drawTextBetweenFrames) {

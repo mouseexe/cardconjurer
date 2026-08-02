@@ -168,7 +168,6 @@ const frameNames = new Map ([
 	['Transform (Back)', 'M15TransformBack'],
 	['Transform (Back) (New)', 'M15TransformBackNew'],
 	['Color Identity Pips', 'M15CIPips'],
-	['Color Identity Pips (Tall)', 'M15CIPipsTall'],
 	['Transform Icons', 'M15TransformTypes'],
 	['Sagas (Front)', 'SagaDFC'],
 	['Borderless (Front)', 'TransformBorderlessFront'],

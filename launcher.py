@@ -1,7 +1,7 @@
 """
 IMPORTS
 """
-from http.server import SimpleHTTPRequestHandler, HTTPServer
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import webbrowser
 import os
 
@@ -27,7 +27,7 @@ START APP
 """
 
 if __name__ == "__main__":
-    webServer = HTTPServer((NAME, PORT), Handler)
+    webServer = ThreadingHTTPServer((NAME, PORT), Handler)
     print("Server started http://%s:%s" % (NAME, PORT))
 
     try:
