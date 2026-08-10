@@ -37,7 +37,7 @@ var loadMarginVersion = async () => {
 	card.margins = true;
 	//art stuff
 	var changedArtBounds = false;
-	if (card.artBounds.width == 1) {
+	if (card.artBounds.width >= 1 && card.artBounds.width <= 1.05) {
 		card.artBounds.width += 0.044;
 		changedArtBounds = true;
 	}

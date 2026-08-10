@@ -225,7 +225,7 @@ async function resetCardIrregularities({canvas = [getStandardWidth(), getStandar
 
 	if (lockMargin || canvas[2] > 0) {
 		var changedArtBounds = false;
-		if (card.artBounds.width == 1) {
+		if (card.artBounds.width >= 1 && card.artBounds.width <= 1.05) {
 			card.artBounds.width += 0.044;
 			changedArtBounds = true;
 		}
