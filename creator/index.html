@@ -292,6 +292,12 @@
 							</label>
 						</div>
 						<div class='readable-background padding margin-bottom'>
+							<label class='checkbox-container input'>Hide flavor text
+								<input id='hide-flavor-text' type='checkbox' onchange='textEdited();'>
+								<span class='checkmark'></span>
+							</label>
+						</div>
+						<div class='readable-background padding margin-bottom'>
 							<label class='checkbox-container input'>Auto-italicize reminder text
 								<input id='italicize-reminder-text' type='checkbox' onchange='textEdited();'>
 								<span class='checkmark'></span>
@@ -344,6 +350,11 @@
 							<div class='input-grid'>
 								<input id='art-artist' type='text' class='input' oninput='artistEdited(this.value);' placeholder='Artist'>
 							</div>
+							<h5 class='input-description margin-bottom margin-top'>Lock the artist name (saves between imports)</h5>
+							<label class='checkbox-container input'>Lock artist name
+								<input id='lockArtistName' type='checkbox' onchange='lockArtistName();'>
+								<span class='checkmark'></span>
+							</label>
 						</div>
 						<div class='readable-background padding margin-bottom'>
 							<h5 class='margin-bottom padding input-description'>Position/scale your art (X, Y, Scale, Rotation)<br>Art is now visually adjustable! Click and drag anywhere on the card to move your art around. Hold shift while doing so to scale, or control to rotate.</h5>

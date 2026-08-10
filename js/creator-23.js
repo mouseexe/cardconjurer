@@ -1612,11 +1612,21 @@ function writeText(textObject, targetContext) {
 	lineCanvas.height = startingTextSize + 2 * canvasMargin;
 	//Preps the text string
 	var splitString = '6GJt7eL8';
-	var rawText = textObject.text
+	var rawText = textObject.text;
+
+	if (document.querySelector('#hide-flavor-text') && document.querySelector('#hide-flavor-text').checked && textObject.name && textObject.name != 'Title' && textObject.name != 'Type' && textObject.name != 'Mana Cost' && textObject.name != 'Power/Toughness') {
+		var flavorIndex = rawText.indexOf('{flavor}');
+		if (flavorIndex < 0) flavorIndex = rawText.indexOf('///');
+		if (flavorIndex >= 0) {
+			rawText = rawText.substring(0, flavorIndex);
+		}
+	}
+
 	if (document.querySelector('#hide-reminder-text').checked && textObject.name && textObject.name != 'Title' && textObject.name != 'Type' && textObject.name != 'Mana Cost' && textObject.name != 'Power/Toughness') {
 		var rulesText = rawText;
 		var flavorText = '';
-		var flavorIndex = rawText.indexOf('{flavor}') || rawText.indexOf('///');
+		var flavorIndex = rawText.indexOf('{flavor}');
+		if (flavorIndex < 0) flavorIndex = rawText.indexOf('///');
 		if (flavorIndex >= 0) {
 			flavorText = rawText.substring(flavorIndex);
 			rulesText = rawText.substring(0, flavorIndex);
@@ -2775,7 +2785,9 @@ function changeArtIndex() {
 	if (artIndexValue != 0 || artIndexValue == '0') {
 		const scryfallCardForArt = scryfallArt[artIndexValue];
 		uploadArt(scryfallCardForArt.image_uris.art_crop, 'autoFit');
-		artistEdited(scryfallCardForArt.artist);
+		if (!document.querySelector('#lockArtistName') || !document.querySelector('#lockArtistName').checked) {
+			artistEdited(scryfallCardForArt.artist);
+		}
 		if (params.get('mtgpics') != null) {
 			imageURL(`https://www.mtgpics.com/pics/art/${scryfallCardForArt.set.toLowerCase()}/${("00" + scryfallCardForArt.collector_number).slice(-3)}.jpg`, tryMTGPicsArt);
 		}
@@ -2940,6 +2952,13 @@ function lockSetSymbolCode() {
 		savedValue = document.querySelector('#set-symbol-code').value;
 	}
 	localStorage.setItem('lockSetSymbolCode', savedValue);
+}
+function lockArtistName() {
+	var savedValue = '';
+	if (document.querySelector('#lockArtistName').checked) {
+		savedValue = document.querySelector('#art-artist').value;
+	}
+	localStorage.setItem('lockArtistName', savedValue);
 }
 function lockSetSymbolURL() {
 	var savedValue = '';
@@ -3115,6 +3134,9 @@ async function resetSerial() {
 }
 
 function artistEdited(value) {
+	if (document.querySelector('#lockArtistName') && document.querySelector('#lockArtistName').checked) {
+		localStorage.setItem('lockArtistName', value);
+	}
 	document.querySelector('#art-artist').value = value;
 	document.querySelector('#info-artist').value = value;
 	bottomInfoEdited();
@@ -4159,7 +4181,9 @@ function changeCardIndex() {
 
 		// Add artist info
 		if (cardToImport.artist) {
-			artistEdited(cardToImport.artist);
+			if (!document.querySelector('#lockArtistName') || !document.querySelector('#lockArtistName').checked) {
+				artistEdited(cardToImport.artist);
+			}
 		}
 
 		// Handle art loading 
@@ -4258,7 +4282,9 @@ function changeCardIndex() {
 
 		// Add artist info
 		if (cardToImport.artist) {
-			artistEdited(cardToImport.artist);
+			if (!document.querySelector('#lockArtistName') || !document.querySelector('#lockArtistName').checked) {
+				artistEdited(cardToImport.artist);
+			}
 		}
 
 		// Handle art loading 
@@ -5520,6 +5546,17 @@ if (!localStorage.getItem('lockDateStamp')) {
 }
 if (document.querySelector('#lockDateStamp')) {
 	document.querySelector('#lockDateStamp').checked = localStorage.getItem('lockDateStamp') === 'true';
+}
+
+// lock artist name
+if (!localStorage.getItem('lockArtistName')) {
+	localStorage.setItem('lockArtistName', '');
+}
+if (document.querySelector('#lockArtistName')) {
+	document.querySelector('#lockArtistName').checked = '' != localStorage.getItem('lockArtistName');
+	if (document.querySelector('#lockArtistName').checked) {
+		artistEdited(localStorage.getItem('lockArtistName'));
+	}
 }
 
 //bind inputs together
